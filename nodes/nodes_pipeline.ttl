@@ -13,68 +13,39 @@
 @prefix rml: <https://w3id.org/conn/rml#>.
 @prefix ql: <http://semweb.mmlab.be/ns/ql#>.
 @prefix rdfl: <https://w3id.org/rdf-lens/ontology#>.
+@prefix rdfc: <https://w3id.org/rdf-connect/ontology#>.
 
-<> owl:imports <../node_modules/@rdfc/js-runner/ontology.ttl>.
-<> owl:imports <../node_modules/@rdfc/js-runner/channels/file.ttl>.
-<> owl:imports <../node_modules/@rdfc/js-runner/channels/http.ttl>.
+<> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <../proc/fetch.ttl>.
 <> owl:imports <../proc/mumo_nodes.ttl>.
+<> owl:imports <../node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/ldesify.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
-<> owl:imports <../node_modules/@rdfc/sds-storage-writer-ts/processor.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
 <> owl:imports <../shape.ttl>.
-<ttl/writer> a js:JsWriterChannel.
-<ttl/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <ttl/reader>;
-  :writer <ttl/writer>.
+<> a rdfc:Pipeline;
+  rdfc:dependency <>;
+  rdfc:processor <MumoSource>,
+    <Sdsify>,
+    <Ldesify>,
+    <MetaDataReader>,
+    <Bucketize>,
+    # <Ingest>,
+    # <Ingest-2>,
+    <Ldes>;
+  rdfc:runner rdfc:JsRunner.
 
-<sds-raw/writer> a js:JsWriterChannel.
-<sds-raw/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <sds-raw/reader>;
-  :writer <sds-raw/writer>.
+rdfc:JsRunner rdfc:handles rdfc:Processor.
+<MumoSource> a js:MumoSource;
+  js:dataOutput <ttl>.
 
-<ldes-raw/writer> a js:JsWriterChannel.
-<ldes-raw/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <ldes-raw/reader>;
-  :writer <ldes-raw/writer>.
-
-<raw/buckets-1/writer> a js:JsWriterChannel.
-<raw/buckets-1/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <raw/buckets-1/reader>;
-  :writer <raw/buckets-1/writer>.
-
-<meta/buckets-1/writer> a js:JsWriterChannel.
-<meta/buckets-1/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <meta/buckets-1/reader>;
-  :writer <meta/buckets-1/writer>.
-
-<raw/buckets-2/writer> a js:JsWriterChannel.
-<raw/buckets-2/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <raw/buckets-2/reader>;
-  :writer <raw/buckets-2/writer>.
-
-<meta/buckets-2/writer> a js:JsWriterChannel.
-<meta/buckets-2/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <meta/buckets-2/reader>;
-  :writer <meta/buckets-2/writer>.
-
-[ ] a js:MumoSource;
-  js:dataOutput <ttl/writer>.
-
-[ ] a js:Sdsify;
-  js:input <ttl/reader>;
-  js:output <sds-raw/writer>;
+<Sdsify> a rdfc:Sdsify;
+  js:input <ttl>;
+  js:output <sds-raw>;
   js:objectType <http://www.w3.org/ns/sosa/Platform>;
   js:typeFilter <http://www.w3.org/ns/sosa/Platform>;
-  js:stream <http://data.mumo.be/streams/nodes/sds>;
+  js:stream <sds>;
   js:shape """
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
@@ -100,23 +71,22 @@ ex:SensorShape a sh:NodeShape;
   ].
 """.
 
-[ ] a js:LdesifySDS;
-  js:input <sds-raw/reader>;
-  js:output <ldes-raw/writer>;
+<Ldesify> a rdfc:LdesifySDS;
+  js:input <sds-raw>;
+  js:output <ldes-raw>;
   js:statePath <./ldesState.json>;
   js:targetStream <http://data.mumo.be/streams/nodes/ldes>.
 
-<metadata/in> a :FileReaderChannel;
-  :fileReadFirstContent "true";
-  :fileOnReplace "true";
-  :filePath <./metadataIn.ttl>.
+<MetaDataReader> a rdfc:GlobRead;
+  js:glob "./nodes/metadataIn.ttl";
+  js:output <metadata>.
 
-[ ] a js:Bucketize;
+<Bucketize> a rdfc:Bucketize;
   js:channels [
-    js:dataInput <ldes-raw/reader>;
-    js:metadataInput <metadata/in>;
-    js:dataOutput <raw/buckets-1/writer>;
-    js:metadataOutput <meta/buckets-1/writer>;
+    js:dataInput <ldes-raw>;
+    js:metadataInput <metadata>;
+    js:dataOutput <raw/buckets-1>;
+    js:metadataOutput <meta/buckets-1>;
   ];
   js:bucketizeStrategy ( [
     a tree:SubjectFragmentation;
@@ -125,43 +95,51 @@ ex:SensorShape a sh:NodeShape;
     tree:fragmentationPathName dcterms:title;
   ] );
   js:savePath <./buckets_nodes_save-1.json>;
-  js:outputStreamId <http://data.mumo.be/streams/nodes/default>.
+  js:outputStreamId <default>.
 
-[ ] a js:Bucketize;
-  js:channels [
-    js:dataInput <ldes-raw/reader>;
-    js:metadataInput <metadata/in>;
-    js:dataOutput <raw/buckets-2/writer>;
-    js:metadataOutput <meta/buckets-2/writer>;
-  ];
-  js:bucketizeStrategy ( [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath (
-      <http://purl.org/dc/terms/isVersionOf>
-      cidoc:P55_has_current_location
-      [ sh:zeroOrMorePath dcterms:isPartOf ]
-    );
-    tree:fragmentationDefaultName "unlocated";
-    tree:fragmentationPathName dcterms:title;
-  ] [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath <http://purl.org/dc/terms/isVersionOf>;
-    tree:fragmentationDefaultName "unknown";
-    tree:fragmentationPathName dcterms:title;
-  ] );
-  js:savePath <./buckets_nodes_save-2.json>;
-  js:outputStreamId <http://data.mumo.be/streams/nodes/by-location>.
+# [ ] a js:Bucketize;
+#   js:channels [
+#     js:dataInput <ldes-raw>;
+#     js:metadataInput <metadata>;
+#     js:dataOutput <raw/buckets-2>;
+#     js:metadataOutput <meta/buckets-2>;
+#   ];
+#   js:bucketizeStrategy ( [
+#     a tree:SubjectFragmentation;
+#     tree:fragmentationPath (
+#       <http://purl.org/dc/terms/isVersionOf>
+#       cidoc:P55_has_current_location
+#       [ sh:zeroOrMorePath dcterms:isPartOf ]
+#     );
+#     tree:fragmentationDefaultName "unlocated";
+#     tree:fragmentationPathName dcterms:title;
+#   ] [
+#     a tree:SubjectFragmentation;
+#     tree:fragmentationPath <http://purl.org/dc/terms/isVersionOf>;
+#     tree:fragmentationDefaultName "unknown";
+#     tree:fragmentationPathName dcterms:title;
+#   ] );
+#   js:savePath <./buckets_nodes_save-2.json>;
+#   js:outputStreamId <http://data.mumo.be/streams/nodes/by-location>.
+<Ingest> a rdfc:LogProcessor;
+  rdfc:reader <raw/buckets-1>.
 
-[ ] a js:Ingest;
-  js:dataInput <raw/buckets-1/reader>;
-  js:metadataInput <meta/buckets-1/reader>;
-  js:database <DataBaseConfig>.
+<Ldes> a rdfc:LdesDiskWriter;
+  js:dataInput <raw/buckets-1>;
+  js:metadataInput <meta/buckets-1>;
+  js:directory "./ldes".
 
-[ ] a js:Ingest;
-  js:dataInput <raw/buckets-2/reader>;
-  js:metadataInput <meta/buckets-2/reader>;
-  js:database <DataBaseConfig>.
+<Ingest-2> a rdfc:LogProcessor;
+  rdfc:reader <meta/buckets-1>.
 
+# <Ingest> a js:Ingest;
+#   js:dataInput <raw/buckets-1>;
+#   js:metadataInput <meta/buckets-1>;
+#   js:database <DataBaseConfig>.
+# [ ] a js:Ingest;
+#   js:dataInput <raw/buckets-2>;
+#   js:metadataInput <meta/buckets-2>;
+#   js:database <DataBaseConfig>.
 <DataBaseConfig> js:data "DATA";
   js:index "INDEX";
   js:metadata "META";

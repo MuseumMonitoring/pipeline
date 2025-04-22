@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import fetch, { Headers } from "node-fetch";
-import { profiler, type Writer } from "@rdfc/js-runner";
+import { Writer } from "@rdfc/js-runner";
 
 interface Link {
   target: string;
@@ -64,7 +64,7 @@ async function findNextUrl(
 }
 
 async function start(
-  writer: Writer<string>,
+  writer: Writer,
   start_url: string,
   interval_ms: number,
   save_path?: string,
@@ -83,35 +83,30 @@ async function start(
     try {
       url = readFileSync(save_path, { encoding: "utf8" });
       url = await findNextUrl(url, interval_ms, stop);
-    } catch (ex: any) {}
+    } catch (ex: any) { }
   }
 
   return async () => {
     console.log("Starting for real");
     while (url) {
       console.log("fetching url", url);
-      let ret = profiler.start("fetcher");
       const resp = await fetch(url);
       let links = extract_links(resp.headers);
 
       const text = await resp.text();
-      // console.log("got text!", text.length);
-      profiler.stop(ret);
 
-      await writer.push(text);
+      await writer.string(text);
 
-      ret = profiler.start("fetcher");
       save(url);
       url = await findNextUrl(url, interval_ms, stop, links);
-      profiler.stop(ret);
     }
 
-    await writer.end();
+    await writer.close();
   };
 }
 
 export function fetcher(
-  writer: Writer<string>,
+  writer: Writer,
   start_url: string,
   save_path?: string,
   interval_ms = 1000,

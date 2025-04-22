@@ -69,7 +69,7 @@ export async function createNodeForNode(
 export function getShapes(): { store: RdfStore; shapes: Shapes } {
   // TODO: Change this so to use the provided nodes LDES or stay with this api, idrc
   const shape = $INLINE_FILE("../shape.ttl");
-  
+
   const shapeTriples = new N3.Parser().parse(shape);
   const shapeStore = RdfStore.createDefault();
   shapeTriples.forEach((x) => shapeStore.addQuad(x));
@@ -108,14 +108,14 @@ export async function find_nodes(nodes: Nodes, from_cache = false) {
   );
 }
 
-export async function FetchNodes(writer: Writer<string>, period_ms = 5000) {
+export async function FetchNodes(writer: Writer, period_ms = 5000) {
   return () => {
     setInterval(async () => {
       const nodes: Nodes = {};
       await find_nodes(nodes);
 
       for (const node of Object.values(nodes)) {
-        await writer.push(new N3.Writer().quadsToString(node.quads));
+        await writer.string(new N3.Writer().quadsToString(node.quads));
       }
     }, period_ms);
   };

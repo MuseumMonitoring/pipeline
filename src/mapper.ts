@@ -1,5 +1,5 @@
 import { Quad } from "@rdfjs/types";
-import type { Stream, Writer } from "@rdfc/js-runner";
+import { Reader, Writer } from "@rdfc/js-runner";
 import { getLogger, RDF, RDFS, XSD } from "@treecg/types";
 import * as N3 from "n3";
 import { isotc, mumoData, qudt, sosa } from "./ontologies";
@@ -220,19 +220,16 @@ class TransformInstance {
     if (foundChannel) return foundChannel;
 
     logger.info(
-      `Channel ${channelName} (${
-        SensorDevices[deviceIdx].name
+      `Channel ${channelName} (${SensorDevices[deviceIdx].name
       }) was not yet present for ${this.name} (${this.euid})`,
     );
     // We didn't find this channel yet on this device on this node
     // So let's build one
 
-    const identifier = `http://data.momu.be/items/id/${this.euid}-${
-      thisDevice.item["dcterms:publisher"]
-    }-${channelName}`;
-    const title = `${this.name} - ${
-      thisDevice.item["dcterms:publisher"]
-    } - ${channelName}`;
+    const identifier = `http://data.momu.be/items/id/${this.euid}-${thisDevice.item["dcterms:publisher"]
+      }-${channelName}`;
+    const title = `${this.name} - ${thisDevice.item["dcterms:publisher"]
+      } - ${channelName}`;
     const channel = await this.omeka.channel.create(
       {
         "dcterms:isPartOf": thisDevice,
@@ -335,8 +332,8 @@ async function do_transform(
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env" });
 export async function transform(
-  reader: Stream<string>,
-  writer: Writer<string>,
+  reader: Reader,
+  writer: Writer,
 ) {
   const nodes: MyNodes = {};
   const omeka = await getOmeka("https://heron.libis.be/momu-test/api");
@@ -350,17 +347,17 @@ export async function transform(
     count = 0;
   }, 1000);
 
-  reader.data(async (input) => {
-    count += 1;
-    try {
-      const objects = await do_transform(input, nodes, omeka);
-      for (let object of objects) {
-        await writer.push(object);
-      }
-    } catch (e: any) {
-      console.log(e);
-    }
-  });
-
-  reader.on("end", writer.end);
+  // reader.data(async (input) => {
+  //   count += 1;
+  //   try {
+  //     const objects = await do_transform(input, nodes, omeka);
+  //     for (let object of objects) {
+  //       await writer.push(object);
+  //     }
+  //   } catch (e: any) {
+  //     console.log(e);
+  //   }
+  // });
+  //
+  // reader.on("end", writer.end);
 }
