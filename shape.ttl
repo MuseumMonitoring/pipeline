@@ -33,12 +33,12 @@ ex:Shape a sh:NodeShape;
       ] ];
     ] ];
   ].
-  # ], [
-  #   sh:path cidoc:P55_has_current_location;
-  #   sh:minCount 1;
-  #   sh:node ex:Location;
-  # ].shape
 
+# ], [
+# sh:path cidoc:P55_has_current_location;
+#   sh:minCount 1;
+#   sh:node ex:Location;
+# ].shape
 ex:Measurement a sh:NodeShape;
   sh:property [
     sh:path sosa:madeBySensor;

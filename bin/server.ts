@@ -336,7 +336,7 @@ function readFileChunks(location: string): Promise<string[]> {
     const out: string[] = [];
     let last = "";
     const stream = createReadStream(location, { encoding: "utf8" });
-    stream.on("data", (incoming: string) => {
+    stream.on("data", (incoming: string | Buffer) => {
       const s = last + incoming;
       let pos = 0;
       let idx = s.indexOf("}{", pos);
