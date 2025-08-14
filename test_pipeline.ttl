@@ -1,34 +1,207 @@
-@prefix rml: <http://w3id.org/rml/>.
+@prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
+@prefix sosa: <http://www.w3.org/ns/sosa/>.
+@prefix tree: <https://w3id.org/tree#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix sh: <http://www.w3.org/ns/shacl#>.
-@prefix js: <https://w3id.org/conn/js#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
-@prefix : <https://w3id.org/conn#>.
 
-# <> owl:imports <https://raw.githubusercontent.com/TREEcg/extract-cbd-shape/main/tests/01%20-%20fetching%20a%20shacl%20shape/shacl-shacl.ttl>.
+<> owl:imports <./node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <./proc/fetch.ttl>.
-
-[] a js:MumoFetch;
-    js:dataOutput <>;
-    js:startUrl <>.
-
 <> owl:imports <./proc/mumo_mapper.ttl>.
-[ ] a js:MumoFetch;
-  js:dataOutput "ti";
-  js:startUrl "tes".
+<> owl:imports <./proc/acl_auth.ttl>.
+<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
+<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
+<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
+<> owl:imports <./node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
+<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
+<> a rdfc:Pipeline;
+  rdfc:consistsOf [
+    rdfc:instantiates rdfc:NodeRunner;
+    rdfc:processor <fetchData>,
+      <fetchSensors>,
+      <mapper>,
+      <logger>,
+      <sdsify>,
+      <bucketizer>,
+      # <bucketizer2>,
+      <ingestor>,
+      <auth>,
+      <metaReader>;
+  ].
 
-[ ] a js:MumoMapper;
-  js:dataOutput 2;
-  js:dataInput 2.
+# <auth>;
+rdfc:NodeRunner a rdfc:Runner;
+  rdfc:handlesSubjectsOf rdfc:jsImplementationOf;
+  rdfc:command "npx js-runner".
 
-[ ] a js:MumoMapper;
-  js:dataOutput <>;
-  js:dataInput <>.
+<sensors/json> a rdfc:Reader, rdfc:Writer.
+<sensors/ttl> a rdfc:Reader, rdfc:Writer.
+<mapped> a rdfc:Reader, rdfc:Writer.
+<data> a rdfc:Reader, rdfc:Writer.
+<trigger> a rdfc:Reader, rdfc:Writer.
+<sds-raw> a rdfc:Reader, rdfc:Writer.
+#
+<fetchData> a rdfc:MumoFetch;
+  rdfc:dataOutput <data>;
+  rdfc:delay <trigger>;
+  rdfc:intervalMs 5000;
+  # rdfc:savePath <./data-save.json>;
+  rdfc:startUrl "http://localhost:8080/history.php?data".
 
-[ ] a js:MumoFetch;
-  js:dataOutput <>;
-  js:startUrl "".
+<fetchSensors> a rdfc:MumoFetch;
+  rdfc:dataOutput <sensors/json>;
+  rdfc:intervalMs 5000;
+  rdfc:startUrl "http://localhost:8080/history.php?sensors".
 
-[ ] a js:MumoMapper;
-  js:dataOutput <>;
-  js:dataInput <>.
+<mapper> a rdfc:MumoMapper;
+  rdfc:trigger <trigger>;
+  rdfc:data [
+    rdfc:reader <data>;
+    rdfc:writer <mapped>;
+  ];
+  rdfc:sensor [
+    rdfc:reader <sensors/json>;
+    rdfc:writer <sensors/ttl>;
+  ].
+
+<sdsify> a rdfc:Sdsify;
+  rdfc:input <mapped>;
+  rdfc:output <sds-raw>;
+  rdfc:objectType <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
+  rdfc:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+  rdfc:typeFilter <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
+  rdfc:stream <http://data.mumo.be/streams/sds>;
+  rdfc:shape """
+@prefix sosa: <http://www.w3.org/ns/sosa/>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix ex: <http://example.org/>.
+@prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
+
+ex:Measurement a sh:NodeShape;
+  sh:property [
+    sh:path sosa:madeBySensor;
+    sh:minCount 1;
+    sh:node [  ];
+  ], [
+    sh:path (
+      <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.result>
+      <http://qudt.org/1.1/schema/qudt#unit>
+    );
+    sh:node [];
+  ].
+""".
+
+<metadata> a rdfc:Reader, rdfc:Writer.
+<raw/buckets-1> a rdfc:Reader, rdfc:Writer.
+<meta/buckets-1> a rdfc:Reader, rdfc:Writer.
+<meta/buckets-2> a rdfc:Reader, rdfc:Writer.
+<metaReader> a rdfc:GlobRead;
+  rdfc:glob <./data/metadataIn.ttl>;
+  rdfc:output <metadata>;
+  rdfc:closeOnEnd "true".
+
+<bucketizer> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sds-raw>;
+    rdfc:metadataInput <metadata>;
+    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:metadataOutput <meta/buckets-1>;
+  ];
+  rdfc:bucketizeStrategy ( [
+    a tree:SubjectFragmentation;
+    tree:fragmentationPath ( sosa:madeBySensor cidoc:P55_has_current_location );
+    tree:fragmentationDefaultName "unlocated";
+    tree:fragmentationPathName ( );
+  ] [
+    a tree:TimeBucketFragmentation;
+    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+    tree:level ( [
+      tree:range "year";
+      tree:maxSize 0;
+    ] [
+      tree:range "month";
+      tree:maxSize 0;
+    ] [
+      tree:range "day-of-month";
+      tree:maxSize 1000;
+    ] [
+      tree:range "hour";
+      tree:maxSize 1000;
+    ] [
+      tree:range "minute";
+      tree:maxSize 10000;
+    ] );
+  ] );
+  # rdfc:savePath <./buckets_save_1.json>;
+  rdfc:outputStreamId "by-sensor".
+
+<bucketizer2> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sds-raw>;
+    rdfc:metadataInput <meta/buckets-1>;
+    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:metadataOutput <meta/buckets-2>;
+  ];
+  rdfc:bucketizeStrategy ( [
+    a tree:TimeBucketFragmentation;
+    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+    tree:level ( [
+      tree:range "year";
+      tree:maxSize 0;
+    ] [
+      tree:range "month";
+      tree:maxSize 0;
+    ] [
+      tree:range "day-of-month";
+      tree:maxSize 1000;
+    ] [
+      tree:range "hour";
+      tree:maxSize 1000;
+    ] [
+      tree:range "minute";
+      tree:maxSize 10000;
+    ] );
+  ] );
+  # rdfc:savePath <./buckets_save_2.json>;
+  rdfc:outputStreamId "location".
+
+<ingestor> a rdfc:LdesDiskWriter;
+  rdfc:dataInput <raw/buckets-1>;
+  rdfc:metadataInput <meta/buckets-1>;
+  rdfc:directory "./ldes2/".
+
+<auth> a rdfc:AclAuth;
+  rdfc:usersUrl "http://localhost:8080/history.php?users";
+  rdfc:groupsUrl "http://localhost:8080/history.php?groups";
+  rdfc:port 7111;
+  rdfc:interval 1000;
+  rdfc:publicGroup 1, 2, 5, 7;
+  rdfc:protected "/location", "/by-sensor";
+  rdfc:public "/location/.acl",
+    "/by-sensor/.acl",
+    "/location/root/.acl",
+    "/by-sensor/root/.acl".
+
+<logger> a <Log>.
+# rdfc:input <mapped>.
+<Log> a owl:Class, rdfs:Class;
+  rdfc:jsImplementationOf rdfc:Processor;
+  rdfs:label "Log Things";
+  rdfs:comment "Logs things";
+  rdfc:file <./lib/utils.js>;
+  rdfc:class "Logger";
+  rdfs:entrypoint <./>.
+
+[ ] a sh:NodeShape;
+  sh:targetClass <Log>;
+  sh:property [
+    sh:name "streams";
+    sh:path rdfc:input;
+    sh:class rdfc:Reader;
+  ].
 

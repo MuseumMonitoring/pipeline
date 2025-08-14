@@ -1,117 +1,196 @@
 import { readFileSync, writeFileSync } from "fs";
 import fetch, { Headers } from "node-fetch";
-import { Writer } from "@rdfc/js-runner";
+import { Processor, Reader, Writer } from "@rdfc/js-runner";
 
-interface Link {
-  target: string;
-  url: string;
+export type Data<T = unknown> = {
+    page: number,
+    page_size: number,
+    total_records: number,
+    history: T[],
 }
 
 function extract_links(headers: Headers): Link[] {
-  // link = </ingest/?index=1514>; rel="next", </ingest/?index=1512>; rel="prev"
-  const link = headers.get("link");
-  if (!link) return [];
+    // link = </ingest/?index=1514>; rel="next", </ingest/?index=1512>; rel="prev"
+    const link = headers.get("link");
+    if (!link) return [];
 
-  const out: Link[] = [];
+    const out: Link[] = [];
 
-  for (let l of link.split(",")) {
-    let [key, val] = l.split(";");
-    if (!key || !val) continue;
+    for (let l of link.split(",")) {
+        let [key, ...vals] = l.split(";");
+        if (!key || !vals) continue;
 
-    const url = key.trim().slice(1, -1);
-    const [val_key, val_val] = val.split("=");
+        const url = key.trim().slice(1, -1);
 
-    if (!val_key || !val_val) continue;
-    if (val_key.trim().toLowerCase() !== "rel") continue;
-    const target = val_val.trim().replaceAll('"', "");
+        for (const val of vals) {
+            const [val_key, val_val] = val.split("=");
 
-    out.push({ target, url });
-  }
+            if (!val_key || !val_val) continue;
+            if (val_key.trim().toLowerCase() !== "rel") continue;
+            const target = val_val.trim().replaceAll('"', "");
 
-  return out;
-}
-
-async function findNextUrl(
-  url: string,
-  interval_ms: number,
-  stop: boolean,
-  maybeLinks?: Link[],
-): Promise<string | undefined> {
-  const startingUrl = new URL(url);
-  let links = !!maybeLinks
-    ? maybeLinks
-    : await fetch(url).then((resp) => extract_links(resp.headers));
-
-  while (true) {
-    const next = links.find((x) => x.target === "next");
-    if (next) {
-      // Found next url
-      const url_url = new URL(
-        next.url,
-        `${startingUrl.protocol}//${startingUrl.host}`,
-      );
-      return url_url.href;
+            out.push({ target, url });
+        }
     }
 
-    console.log("waiting");
-
-    if (stop) break;
-    // Wait and refetch and look for headers
-    await new Promise((res) => setTimeout(res, interval_ms));
-    const resp = await fetch(url);
-    links = extract_links(resp.headers);
-  }
+    return out;
 }
 
-async function start(
-  writer: Writer,
-  start_url: string,
-  interval_ms: number,
-  save_path?: string,
-  stop = false,
-) {
-  console.log("Start url", start_url);
-  console.log("Save path", save_path);
-  const save = (url: string) => {
-    if (save_path) {
-      writeFileSync(save_path, url, { encoding: "utf8" });
-    }
-  };
+class Fetched {
+    data: Data;
+    links: Link[];
+    url: string;
 
-  let url: string | undefined = start_url;
-  if (save_path) {
-    try {
-      url = readFileSync(save_path, { encoding: "utf8" });
-      url = await findNextUrl(url, interval_ms, stop);
-    } catch (ex: any) { }
-  }
-
-  return async () => {
-    console.log("Starting for real");
-    while (url) {
-      console.log("fetching url", url);
-      const resp = await fetch(url);
-      let links = extract_links(resp.headers);
-
-      const text = await resp.text();
-
-      await writer.string(text);
-
-      save(url);
-      url = await findNextUrl(url, interval_ms, stop, links);
+    private constructor(data: Data, links: Link[], url: string) {
+        this.data = data;
+        this.links = links;
+        this.url = url;
     }
 
-    await writer.close();
-  };
+    public static async fetch(url: string): Promise<Fetched> {
+        console.log("Producing url", url);
+        const resp = await fetch(url);
+        const links = extract_links(resp.headers);
+        const object = <Data>await resp.json();
+        return new Fetched(object, links, url);
+    }
+
+    nextUrl(): string | undefined {
+        const next = this.links.find((x) => x.target === "next");
+        if (next) {
+            const url_url = new URL(
+                next.url,
+                this.url
+            );
+            return url_url.href;
+        }
+    }
+
+    finished(): boolean {
+        return this.data.page_size == this.data.history.length;
+    }
 }
 
-export function fetcher(
-  writer: Writer,
-  start_url: string,
-  save_path?: string,
-  interval_ms = 1000,
-  stop = false,
-) {
-  console.log("Starting fetcher");
-  return start(writer, start_url, interval_ms, save_path, stop);
+export type Entry<T = unknown> = {
+    type: "poll"
+} | {
+    type: "entity",
+    object: T,
+    idx: number
+    idx2: number
+}
+
+interface Link {
+    target: string;
+    url: string;
+}
+
+
+type FetchArgs = {
+    writer: Writer,
+    start_url: string,
+    delayed?: Reader,
+    save_path?: string,
+    interval_ms: number,
+    stop: boolean,
+}
+
+export class Fetcher extends Processor<FetchArgs> {
+    private at: number = 0;
+
+    private current!: Fetched;
+    private waitFor!: Promise<void>;
+
+    async init(this: FetchArgs & this): Promise<void> {
+        this.logger.info("Init");
+        this.interval_ms = this.interval_ms ?? 1000;
+        this.stop = this.stop ?? false;
+
+        let start = this.start_url;
+        if (this.save_path) {
+            try {
+                const { url, at }: { url: string, at: number } = JSON.parse(readFileSync(this.save_path, { encoding: "utf8" }));
+                if (url === undefined || at === undefined) throw "incorrect state"
+                start = url;
+                this.at = at;
+            } catch (ex: any) { }
+        }
+
+        this.current = await Fetched.fetch(start);
+    }
+
+    async transform(this: FetchArgs & this): Promise<void> {
+        if (this.delayed) {
+            this.waitFor = (async () => {
+                for await (const v of this.delayed!.anys()) {
+                    this.logger.info("Didn't expect a message, but got " + JSON.stringify(v))
+                }
+            })();
+        } else {
+            this.waitFor = Promise.resolve();
+        }
+    }
+
+    async produce(this: FetchArgs & this): Promise<void> {
+        await this.waitFor;
+
+        this.logger.info("Starting for real " + this.current.url);
+        while (true) {
+            const object = this.current.data;
+            const offset = ((object.page - 1) * object.page_size)
+            let i = 0;
+
+            console.log("Producing Histories", JSON.stringify(object.history))
+            this.logger.info("Producing Histories " + JSON.stringify(object.history.map(x => (<any>x)["id"])))
+
+            for (const o of object.history) {
+                i += 1;
+                if (i + offset <= this.at) {
+                    this.logger.info("Already seen " + (i + offset) + " / " + this.at)
+                    continue
+                }
+
+                this.at += 1;
+
+                if ("id" in <any>o) {
+                    console.log("Producing object", (<any>o).id);
+                }
+
+                await this.writer.string(JSON.stringify(<Entry>{ object: o, type: "entity", idx: this.at, idx2: i + offset }));
+                this.save();
+            }
+
+            await this.next();
+        }
+    }
+
+    async next(this: FetchArgs & this) {
+        if (this.current.finished()) {
+            let url = this.current.nextUrl();
+            while (!url) {
+                await this.writer.string(JSON.stringify(<Entry>{ type: "poll" }));
+                this.logger.info("Waiting some " + this.interval_ms + " ms")
+                await new Promise(res => setTimeout(res, this.interval_ms))
+                this.current = await Fetched.fetch(this.current.url);
+                url = this.current.nextUrl();
+            }
+            this.logger.info("fetching " + url)
+            this.current = await Fetched.fetch(url);
+        } else {
+            await this.writer.string(JSON.stringify(<Entry>{ type: "poll" }));
+            await new Promise(res => setTimeout(res, this.interval_ms))
+            this.logger.info("refethcing " + this.current.url)
+            this.current = await Fetched.fetch(this.current.url);
+        }
+    }
+
+    save(this: FetchArgs & this) {
+        if (this.save_path) {
+            const state = {
+                url: this.current.url,
+                at: this.at,
+            }
+            writeFileSync(this.save_path, JSON.stringify(state), { encoding: "utf8" });
+        }
+    }
 }

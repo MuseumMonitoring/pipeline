@@ -1,0 +1,57 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+@prefix fno: <https://w3id.org/function/ontology#>.
+@prefix fnom: <https://w3id.org/function/vocabulary/mapping#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix : <https://w3id.org/conn#>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+
+rdfc:AclAuth a owl:Class, rdfs:Class;
+  rdfc:jsImplementationOf rdfc:Processor;
+  rdfs:label "Acl Auth";
+  rdfs:comment "Returns ACL files based on the current group configuration from the mumo dashboard";
+  rdfc:file <../lib/acl.js>;
+  rdfc:class "AclEndpoint";
+  rdfs:entrypoint <../>.
+
+[ ] a sh:NodeShape;
+  sh:targetClass rdfc:AclAuth;
+  sh:property [
+    sh:datatype xsd:string;
+    sh:path rdfc:usersUrl;
+    sh:name "users";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:datatype xsd:string;
+    sh:path rdfc:groupsUrl;
+    sh:name "groups";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:datatype xsd:integer;
+    sh:path rdfc:port;
+    sh:name "port";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:datatype xsd:integer;
+    sh:path rdfc:interval;
+    sh:name "interval";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:datatype xsd:integer;
+    sh:path rdfc:publicGroup;
+    sh:name "publicGroups";
+  ], [
+    sh:datatype xsd:string;
+    sh:path rdfc:protected;
+    sh:name "protected";
+  ], [
+    sh:datatype xsd:string;
+    sh:path rdfc:public;
+    sh:name "public";
+  ].
+
