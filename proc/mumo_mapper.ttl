@@ -1,3 +1,4 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix js: <https://w3id.org/conn/js#>.
 @prefix fno: <https://w3id.org/function/ontology#>.
 @prefix fnom: <https://w3id.org/function/vocabulary/mapping#>.
@@ -5,36 +6,67 @@
 @prefix : <https://w3id.org/conn#>.
 @prefix sh: <http://www.w3.org/ns/shacl#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
 
-js:MumoMapper a js:JsProcess;
-  js:file <../lib/src/mapper.js>;
-  js:function "transform";
-  js:location <../>;
-  js:mapping [
-    a fno:Mapping;
-    fno:parameterMapping [
-      a fnom:PositionParameterMapping;
-      fnom:functionParameter "data input";
-      fnom:implementationParameterPosition "0"^^xsd:int;
-    ], [
-      a fnom:PositionParameterMapping;
-      fnom:functionParameter "data output";
-      fnom:implementationParameterPosition "1"^^xsd:int;
-    ];
-  ].
+rdfc:MumoMapper a owl:Class, rdfs:Class;
+  rdfc:jsImplementationOf rdfc:Processor;
+  rdfs:label "Mumo Mapper";
+  rdfs:comment "Maps incoming JSON objects in MuMo measurements.";
+  # rdfc:file <../lib/src/mapper.js>;
+  rdfc:file <../lib/mapper2.js>;
+  rdfc:class "Mapper";
+  rdfc:entrypoint <../>.
 
+#
+# [ ] a sh:NodeShape;
+#   sh:targetClass rdfc:MumoMapper;
+#   sh:property [
+#     sh:class rdfc:Writer;
+#     sh:path rdfc:dataOutput;
+#     sh:name "writer";
+#     sh:maxCount 1;
+#     sh:minCount 1;
+#   ], [
+#     sh:class rdfc:Reader;
+#     sh:path rdfc:dataInput;
+#     sh:name "reader";
+#     sh:maxCount 1;
+#     sh:minCount 1;
+#   ].
 [ ] a sh:NodeShape;
-  sh:targetClass js:MumoMapper;
+  sh:targetClass <Data>;
   sh:property [
-    sh:class :WriterChannel;
-    sh:path js:dataOutput;
-    sh:name "data output";
+    sh:class rdfc:Writer;
+    sh:path rdfc:writer;
+    sh:name "writer";
     sh:maxCount 1;
     sh:minCount 1;
   ], [
-    sh:class :ReaderChannel;
-    sh:path js:dataInput;
-    sh:name "data input";
+    sh:class rdfc:Reader;
+    sh:path rdfc:reader;
+    sh:name "reader";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ].
+
+[ ] a sh:NodeShape;
+  sh:targetClass rdfc:MumoMapper;
+  sh:property [
+    sh:class rdfc:Writer;
+    sh:path rdfc:trigger;
+    sh:name "trigger";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:class <Data>;
+    sh:path rdfc:data;
+    sh:name "data";
+    sh:maxCount 1;
+    sh:minCount 1;
+  ], [
+    sh:class <Data>;
+    sh:path rdfc:sensor;
+    sh:name "sensor";
     sh:maxCount 1;
     sh:minCount 1;
   ].

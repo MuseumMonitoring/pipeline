@@ -1,39 +1,40 @@
 {
-  "extends": "@tsconfig/node16/tsconfig.json",
+  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    "declaration": true,
-    "outDir": "lib/",
-    "target": "ESNext",
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./lib",
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
     "declarationMap": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "src/types"
-    ],
-    "plugins": [
-      {
-        "transform": "@ajuvercr/ts-transformer-inline-file/transformer"
-      }
-    ],
-    "paths": {
-      "jsonld": [
-        "./src/types/jsonld"
-      ]
-    }
-  },
-  "allowJs": true,
-  "include": [
-    "src/**/*",
-    "bin/**/*",
-    "index.ts"
-  ],
-  "tsc-alias": {
-    "resolveFullPaths": true,
-    "verbose": false
-  },
-  "exclude": [
-    "node_modules/**/*",
-    "src/types/**"
-  ]
+
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Style Options
+    // "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+
+    // Recommended Options
+    "strict": true,
+    "jsx": "react-jsx",
+    // "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+  }
 }

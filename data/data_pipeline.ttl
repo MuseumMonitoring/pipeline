@@ -1,3 +1,5 @@
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix ex: <http://example.org/>.
 @prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
@@ -6,7 +8,6 @@
 @prefix sh: <http://www.w3.org/ns/shacl#>.
 @prefix tree: <https://w3id.org/tree#>.
 @prefix rml: <http://w3id.org/rml/>.
-@prefix js: <https://w3id.org/conn/js#>.
 @prefix ws: <https://w3id.org/conn/ws#>.
 @prefix : <https://w3id.org/conn#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
@@ -15,102 +16,57 @@
 @prefix ql: <http://semweb.mmlab.be/ns/ql#>.
 @prefix rdfl: <https://w3id.org/rdf-lens/ontology#>.
 
-# <> owl:imports <../node_modules/@rdfc/js-runner/ontology.ttl>.
-# <> owl:imports <../node_modules/@rdfc/js-runner/channels/file.ttl>.
-# <> owl:imports <../node_modules/@rdfc/js-runner/channels/http.ttl>.
-# <> owl:imports <../node_modules/@rdfc/js-runner/channels/kafka.ttl>.
+<> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <../proc/fetch.ttl>.
-
 <> owl:imports <../proc/mumo_mapper.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
-<> owl:imports <../node_modules/@rdfc/sds-storage-writer-ts/processor.ttl>.
+<> owl:imports <../node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
 <> owl:imports <../shape.ttl>.
-# <json/writer> a js:JsWriterChannel.
-# <json/reader> a js:JsReaderChannel.
-# [ ] a :Channel, js:JsChannel;
-#   :reader <json/reader>;
-#   :writer <json/writer>.
-<json/reader> a :KafkaReaderChannel;
-  :kafkaTopic [
-    :topicName "mumo";
-    :topicFromBeginning true;
-  ];
-  :kafkaConsumer [ :groupId "reading-group" ];
-  :kafkaBroker [ :brokerHost [
-    a rdfl:EnvVariable;
-    # rdfl:envDefault "redis://127.0.0.1:6379/mumotest";
-    rdfl:envDefault "localhost:9092";
-    rdfl:envKey "KAFKA";
-  ] ].
-
-<ttl/writer> a js:JsWriterChannel.
-<ttl/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <ttl/reader>;
-  :writer <ttl/writer>.
-
-<sds-raw/writer> a js:JsWriterChannel.
-<sds-raw/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <sds-raw/reader>;
-  :writer <sds-raw/writer>.
-
-<raw/buckets-1/writer> a js:JsWriterChannel.
-<raw/buckets-1/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <raw/buckets-1/reader>;
-  :writer <raw/buckets-1/writer>.
-
-<meta/buckets-1/writer> a js:JsWriterChannel.
-<meta/buckets-1/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <meta/buckets-1/reader>;
-  :writer <meta/buckets-1/writer>.
-
-<shaped-1/writer> a js:JsWriterChannel.
-<shaped-1/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <shaped-1/reader>;
-  :writer <shaped-1/writer>.
-
-<raw/buckets-2/writer> a js:JsWriterChannel.
-<raw/buckets-2/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <raw/buckets-2/reader>;
-  :writer <raw/buckets-2/writer>.
-
-<meta/buckets-2/writer> a js:JsWriterChannel.
-<meta/buckets-2/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <meta/buckets-2/reader>;
-  :writer <meta/buckets-2/writer>.
-
-<shaped-2/writer> a js:JsWriterChannel.
-<shaped-2/reader> a js:JsReaderChannel.
-[ ] a :Channel, js:JsChannel;
-  :reader <shaped-2/reader>;
-  :writer <shaped-2/writer>.
-
-# [ ] a js:MumoFetch;
-#   js:startUrl "http://localhost:3000/?key=mumo-is-cool&index=0";
-#   js:savePath <save>;
-#   js:intervalMs 1000;
-#   js:dataOutput <json/writer>.
 #
-[ ] a js:MumoMapper;
-  js:dataInput <json/reader>;
-  js:dataOutput <ttl/writer>.
+<> a rdfc:Pipeline;
+  rdfc:consistsOf [
+    rdfc:instantiates rdfc:NodeRunner;
+    rdfc:processor <mapper>,
+      <inputReader>,
+      <sdsify>,
+      <metaReader>,
+      <bucketizer>,
+      <shapify>,
+      <ingestor>,
+      <logger>;
+  ].
 
-[ ] a js:Sdsify;
-  js:input <ttl/reader>;
-  js:output <sds-raw/writer>;
-  js:objectType <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
-  js:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
-  js:typeFilter <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
-  js:stream <http://data.mumo.be/streams/sds>;
-  js:shape """
+# <shapify>,
+# <mapper>,
+# A node runner, runs things that are rdfc:jsImplementationOf rdfc:Processor  (aka, rdfs:subClassOf prov:Activity)
+rdfc:NodeRunner a rdfc:Runner;
+  rdfc:handlesSubjectsOf rdfc:jsImplementationOf;
+  rdfc:command "npx js-runner".
+
+<json> a rdfc:Reader, rdfc:Writer.
+<ttl> a rdfc:Reader, rdfc:Writer.
+#
+<inputReader> a rdfc:GlobRead;
+  rdfc:glob <../test_ttn_msg.json>;
+  rdfc:output <json>;
+  rdfc:closeOnEnd "true".
+
+<mapper> a rdfc:MumoMapper;
+  rdfc:trigger <json>;
+  rdfc:dataInput <json>;
+  rdfc:dataOutput <ttl>.
+
+<sdsify> a rdfc:Sdsify;
+  rdfc:input <ttl>;
+  rdfc:output <sds-raw>;
+  rdfc:objectType <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
+  rdfc:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+  rdfc:typeFilter <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
+  rdfc:stream <http://data.mumo.be/streams/sds>;
+  rdfc:shape """
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
@@ -149,19 +105,23 @@ ex:Measurement a sh:NodeShape;
   ].
 """.
 
-<metadata/in> a :FileReaderChannel;
-  :fileReadFirstContent "true";
-  :fileOnReplace "true";
-  :filePath <./metadataIn.ttl>.
+<metadata> a rdfc:Reader, rdfc:Writer.
+<sds-raw> a rdfc:Reader, rdfc:Writer.
+<raw/buckets-1> a rdfc:Reader, rdfc:Writer.
+<meta/buckets-1> a rdfc:Reader, rdfc:Writer.
+<metaReader> a rdfc:GlobRead;
+  rdfc:glob <./metadataIn.ttl>;
+  rdfc:output <metadata>;
+  rdfc:closeOnEnd "true".
 
-[ ] a js:Bucketize;
-  js:channels [
-    js:dataInput <sds-raw/reader>;
-    js:metadataInput <metadata/in>;
-    js:dataOutput <raw/buckets-1/writer>;
-    js:metadataOutput <meta/buckets-1/writer>;
+<bucketizer> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sds-raw>;
+    rdfc:metadataInput <metadata>;
+    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:metadataOutput <meta/buckets-1>;
   ];
-  js:bucketizeStrategy ( #   [
+  rdfc:bucketizeStrategy ( #   [
   #   a tree:SubjectFragmentation;
   #   tree:fragmentationPath (
   #     sosa:madeBySensor
@@ -205,54 +165,69 @@ ex:Measurement a sh:NodeShape;
       tree:maxSize 10000;
     ] );
   ] );
-  js:savePath <./buckets_save_1.json>;
-  js:outputStreamId <http://data.mumo.be/streams/buckets/1>.
+  rdfc:savePath <./buckets_save_1.json>;
+  rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
-[ ] a js:Shapify;
-  js:input <raw/buckets-1/reader>;
-  js:output <shaped-1/writer>;
-  js:shape <ValueShape>.
+# rdfc:outputStreamId <http://data.mumo.be/streams/buckets/1>.
+<shaped-1> a rdfc:Reader, rdfc:Writer.
 
-[ ] a js:Ingest;
-  js:dataInput <shaped-1/reader>;
-  js:metadataInput <meta/buckets-1/reader>;
-  js:database <DataBaseConfig>.
+<shapify> a rdfc:Shapify;
+  rdfc:input <raw/buckets-1>;
+  rdfc:output <shaped-1>;
+  rdfc:shape <ValueShape>.
 
-[ ] a js:Bucketize;
-  js:prefix "root/";
-  js:channels [ ];
-  # snip
-  js:bucketizeStrategy ( [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath ( sosa:madeBySensor [ sh:inversePath sosa:hosts ] );
-    tree:fragmentationDefaultName "unknown";
-    tree:fragmentationPathName dcterms:title;
-  ] [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath (
-      <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.result>
-      <http://qudt.org/1.1/schema/qudt#unit>
-    );
-    tree:fragmentationDefaultName "unknown";
-    tree:fragmentationPathName rdfs:label;
-  ] );
-  js:savePath <./buckets_save_2.json>;
-  js:outputStreamId <http://data.mumo.be/streams/buckets/2>.
+<ingestor> a rdfc:LdesDiskWriter;
+  rdfc:dataInput <shaped-1>;
+  rdfc:metadataInput <meta/buckets-1>;
+  rdfc:directory "./ldes2/".
 
-[ ] a js:Shapify;
-  js:input <raw/buckets-2/reader>;
-  js:output <shaped-2/writer>;
-  js:shape <ValueShape>.
+[ ] a rdfc:Ingest;
+  rdfc:dataInput <shaped-1>;
+  rdfc:metadataInput <meta/buckets-1>;
+  rdfc:database <DataBaseConfig>.
 
-[ ] a js:Ingest;
-  js:dataInput <shaped-2/reader>;
-  js:metadataInput <meta/buckets-2/reader>;
-  js:database <DataBaseConfig>.
+<logger> a <Log>;
+  rdfc:input <shaped-1>,
+    <meta/buckets-1>,
+    <ttl>,
+    <json>,
+    <sds-raw>,
+    <raw/buckets-1>.
 
-<DataBaseConfig> js:data "DATA";
-  js:index "INDEX";
-  js:metadata "META";
-  js:url [
+# [ ] a rdfc:Bucketize;
+#   rdfc:prefix "root/";
+#   rdfc:channels [ ];
+#   # snip
+#   rdfc:bucketizeStrategy ( [
+#     a tree:SubjectFragmentation;
+#     tree:fragmentationPath ( sosa:madeBySensor [ sh:inversePath sosa:hosts ] );
+#     tree:fragmentationDefaultName "unknown";
+#     tree:fragmentationPathName dcterms:title;
+#   ] [
+#     a tree:SubjectFragmentation;
+#     tree:fragmentationPath (
+#       <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.result>
+#       <http://qudt.org/1.1/schema/qudt#unit>
+#     );
+#     tree:fragmentationDefaultName "unknown";
+#     tree:fragmentationPathName rdfs:label;
+#   ] );
+#   rdfc:savePath <./buckets_save_2.json>;
+#   rdfc:outputStreamId <http://data.mumo.be/streams/buckets/2>.
+#
+# [ ] a rdfc:Shapify;
+#   rdfc:input <raw/buckets-2/reader>;
+#   rdfc:output <shaped-2/writer>;
+#   rdfc:shape <ValueShape>.
+#
+# [ ] a rdfc:Ingest;
+#   rdfc:dataInput <shaped-2/reader>;
+#   rdfc:metadataInput <meta/buckets-2/reader>;
+#   rdfc:database <DataBaseConfig>.
+<DataBaseConfig> rdfc:data "DATA";
+  rdfc:index "INDEX";
+  rdfc:metadata "META";
+  rdfc:url [
     a rdfl:EnvVariable;
     # rdfl:envDefault "redis://127.0.0.1:6379/mumotest";
     rdfl:envDefault "redis://127.0.0.1:6377/";
@@ -294,7 +269,23 @@ ex:Measurement a sh:NodeShape;
       ];
     ].
 
-<> a js:FileProfilerShape;
-  js:path "/tmp/profile.csv";
-  js:intervalMs 2000.
+<> a rdfc:FileProfilerShape;
+  rdfc:path "/tmp/profile.csv";
+  rdfc:intervalMs 2000.
+
+<Log> a owl:Class, rdfs:Class;
+  rdfc:jsImplementationOf rdfc:Processor;
+  rdfs:label "Log Things";
+  rdfs:comment "Logs things";
+  rdfc:file <../lib/utils.js>;
+  rdfc:class "Logger";
+  rdfs:entrypoint <../>.
+
+[ ] a sh:NodeShape;
+  sh:targetClass <Log>;
+  sh:property [
+    sh:name "streams";
+    sh:path rdfc:input;
+    sh:class rdfc:Reader;
+  ].
 

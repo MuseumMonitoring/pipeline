@@ -1,62 +1,48 @@
-@prefix js: <https://w3id.org/conn/js#> .
-@prefix fno: <https://w3id.org/function/ontology#> .
-@prefix fnom: <https://w3id.org/function/vocabulary/mapping#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix : <https://w3id.org/conn#> .
-@prefix sh: <http://www.w3.org/ns/shacl#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+@prefix fno: <https://w3id.org/function/ontology#>.
+@prefix fnom: <https://w3id.org/function/vocabulary/mapping#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix : <https://w3id.org/conn#>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
 
+rdfc:MumoFetch a owl:Class, rdfs:Class;
+  rdfc:jsImplementationOf rdfc:Processor;
+  rdfs:label "Mumo Fetch";
+  rdfs:comment "Fetches everything following link headers";
+  rdfc:file <../lib/fetch.js>;
+  rdfc:class "Fetcher";
+  rdfs:entrypoint <../>.
 
-js:MumoFetch a js:JsProcess;
-  js:file <../lib/src/fetch.js>;
-  js:function "fetcher";
-  js:location <../>;
-  js:mapping [
-    a fno:Mapping;
-    fno:parameterMapping [
-      a fnom:PositionParameterMapping ;
-      fnom:functionParameter "Data output";
-      fnom:implementationParameterPosition "0"^^xsd:int
-    ],[
-      a fnom:PositionParameterMapping ;
-      fnom:functionParameter "Mumo start url";
-      fnom:implementationParameterPosition "1"^^xsd:int
-    ],[
-      a fnom:PositionParameterMapping ;
-      fnom:functionParameter "Save path";
-      fnom:implementationParameterPosition "2"^^xsd:int
-    ],[
-      a fnom:PositionParameterMapping ;
-      fnom:functionParameter "Interval";
-      fnom:implementationParameterPosition "3"^^xsd:int
-    ]
-  ].
-
-
-[] a sh:NodeShape;
-  sh:targetClass js:MumoFetch;
+[ ] a sh:NodeShape;
+  sh:targetClass rdfc:MumoFetch;
   sh:property [
-    sh:class :WriterChannel;
-    sh:path js:dataOutput;
-    sh:name "Data output";
+    sh:class rdfc:Reader;
+    sh:path rdfc:delay;
+    sh:name "delayed";
+    sh:maxCount 1;
+  ], [
+    sh:class rdfc:Writer;
+    sh:path rdfc:dataOutput;
+    sh:name "writer";
     sh:minCount 1;
     sh:maxCount 1;
   ], [
     sh:datatype xsd:string;
-    sh:path js:startUrl;
-    sh:name "Mumo start url";
+    sh:path rdfc:startUrl;
+    sh:name "start_url";
     sh:minCount 1;
     sh:maxCount 1;
   ], [
     sh:datatype xsd:string;
-    sh:path js:savePath;
-    sh:name "Save path";
+    sh:path rdfc:savePath;
+    sh:name "save_path";
     sh:maxCount 1;
   ], [
     sh:datatype xsd:integer;
-    sh:path js:intervalMs;
-    sh:name "Interval";
+    sh:path rdfc:intervalMs;
+    sh:name "interval_ms";
     sh:maxCount 1;
   ].
-
 
