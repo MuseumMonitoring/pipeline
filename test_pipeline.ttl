@@ -10,6 +10,7 @@
 <> owl:imports <./proc/fetch.ttl>.
 <> owl:imports <./proc/mumo_mapper.ttl>.
 <> owl:imports <./proc/acl_auth.ttl>.
+<> owl:imports <./proc/css.ttl>.
 <> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
 <> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
 <> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
@@ -24,10 +25,10 @@
       <logger>,
       <sdsify>,
       <bucketizer>,
-      # <bucketizer2>,
       <ingestor>,
       <auth>,
-      <metaReader>;
+      <metaReader>,
+      <css>;
   ].
 
 # <auth>;
@@ -46,13 +47,15 @@ rdfc:NodeRunner a rdfc:Runner;
   rdfc:dataOutput <data>;
   rdfc:delay <trigger>;
   rdfc:intervalMs 5000;
-  # rdfc:savePath <./data-save.json>;
-  rdfc:startUrl "http://localhost:8080/history.php?data".
+  rdfc:savePath <./data-save.json>;
+  # rdfc:startUrl "http://localhost:8080/history.php?data".
+  rdfc:startUrl "https://www.mumodashboard.be/history.php?data".
 
 <fetchSensors> a rdfc:MumoFetch;
   rdfc:dataOutput <sensors/json>;
   rdfc:intervalMs 5000;
-  rdfc:startUrl "http://localhost:8080/history.php?sensors".
+  # rdfc:startUrl "http://localhost:8080/history.php?sensors".
+  rdfc:startUrl "https://www.mumodashboard.be/history.php?sensors".
 
 <mapper> a rdfc:MumoMapper;
   rdfc:trigger <trigger>;
@@ -86,7 +89,12 @@ ex:Measurement a sh:NodeShape;
   sh:property [
     sh:path sosa:madeBySensor;
     sh:minCount 1;
-    sh:node [  ];
+    sh:node [
+        sh:property [
+            sh:path sosa:isHostedBy;
+            sh:node [];
+        ];
+    ];
   ], [
     sh:path (
       <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.result>
@@ -112,11 +120,72 @@ ex:Measurement a sh:NodeShape;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
-  rdfc:bucketizeStrategy ( [
+  rdfc:bucketizeStrategy [
     a tree:SubjectFragmentation;
-    tree:fragmentationPath ( sosa:madeBySensor cidoc:P55_has_current_location );
+    tree:fragmentationPath (
+      sosa:madeBySensor
+      sosa:isHostedBy
+      cidoc:P55_has_current_location
+    );
     tree:fragmentationDefaultName "unlocated";
     tree:fragmentationPathName ( );
+  ], [
+    a tree:TimeBucketFragmentation;
+    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+    tree:level ( [
+      tree:range "year";
+      tree:maxSize 0;
+    ] [
+      tree:range "month";
+      tree:maxSize 0;
+    ] [
+      tree:range "day-of-month";
+      tree:maxSize 1000;
+    ] [
+      tree:range "hour";
+      tree:maxSize 1000;
+    ] [
+      tree:range "minute";
+      tree:maxSize 10000;
+    ] );
+  ];
+  # rdfc:savePath <./buckets_save_1.json>;
+  rdfc:outputStreamId <https://w3id.org/sds#Stream>.
+
+<bucketizer3> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sds>;
+    rdfc:metadataInput <metadata>;
+    rdfc:dataOutput <bucketized>;
+    rdfc:metadataOutput <bucketizedMetadata>;
+  ];
+  rdfc:bucketizeStrategy ( [
+    # One or more bucketize strategies
+    a tree:SubjectFragmentation;
+    # Create a bucket based on this path
+    tree:fragmentationPath ( );
+  ] [
+    a tree:PageFragmentation;
+    # Create a new bucket when the previous bucket has 2 members
+    tree:pageSize 2;
+  ] );
+  rdfc:savePath <./buckets_save.json>;
+  rdfc:outputStreamId <HamburgDatastreams>;
+  rdfc:prefix "root/".
+
+# The root fragment is located at '/root/' this defaults to ''
+<bucketizer2> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sds-raw>;
+    rdfc:metadataInput <meta/buckets-1>;
+    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:metadataOutput <meta/buckets-2>;
+  ];
+  rdfc:bucketizeStrategy ( [
+    a tree:SubjectFragmentation;
+    tree:fragmentationPath ( sosa:madeBySensor sosa:isHostedBy );
+    tree:fragmentationDefaultName "unknown";
+    tree:fragmentationPathName rdfs:label;
   ] [
     a tree:TimeBucketFragmentation;
     tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
@@ -137,45 +206,17 @@ ex:Measurement a sh:NodeShape;
       tree:maxSize 10000;
     ] );
   ] );
-  # rdfc:savePath <./buckets_save_1.json>;
-  rdfc:outputStreamId "by-sensor".
-
-<bucketizer2> a rdfc:Bucketize;
-  rdfc:channels [
-    rdfc:dataInput <sds-raw>;
-    rdfc:metadataInput <meta/buckets-1>;
-    rdfc:dataOutput <raw/buckets-1>;
-    rdfc:metadataOutput <meta/buckets-2>;
-  ];
-  rdfc:bucketizeStrategy ( [
-    a tree:TimeBucketFragmentation;
-    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
-    tree:level ( [
-      tree:range "year";
-      tree:maxSize 0;
-    ] [
-      tree:range "month";
-      tree:maxSize 0;
-    ] [
-      tree:range "day-of-month";
-      tree:maxSize 1000;
-    ] [
-      tree:range "hour";
-      tree:maxSize 1000;
-    ] [
-      tree:range "minute";
-      tree:maxSize 10000;
-    ] );
-  ] );
   # rdfc:savePath <./buckets_save_2.json>;
-  rdfc:outputStreamId "location".
+  rdfc:outputStreamId <https://w3id.org/sds#Stream2>.
 
 <ingestor> a rdfc:LdesDiskWriter;
   rdfc:dataInput <raw/buckets-1>;
-  rdfc:metadataInput <meta/buckets-1>;
+  rdfc:metadataInput <meta/buckets-2>;
   rdfc:directory "./ldes2/".
 
 <auth> a rdfc:AclAuth;
+  # rdfc:usersUrl "https://www.mumodashboard.be/history.php?users";
+  # rdfc:groupsUrl "https://www.mumodashboard.be/history.php?groups";
   rdfc:usersUrl "http://localhost:8080/history.php?users";
   rdfc:groupsUrl "http://localhost:8080/history.php?groups";
   rdfc:port 7111;
@@ -187,8 +228,14 @@ ex:Measurement a sh:NodeShape;
     "/location/root/.acl",
     "/by-sensor/root/.acl".
 
-<logger> a <Log>.
-# rdfc:input <mapped>.
+<css> a rdfc:Css;
+  rdfc:config <./css_config.json>;
+  rdfc:path <./ldes2/>;
+  rdfc:mainModulePath <./>.
+
+<logger> a <Log>;
+  rdfc:input <mapped>.
+
 <Log> a owl:Class, rdfs:Class;
   rdfc:jsImplementationOf rdfc:Processor;
   rdfs:label "Log Things";

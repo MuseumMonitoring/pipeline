@@ -13,7 +13,7 @@ rdfc:AclAuth a owl:Class, rdfs:Class;
   rdfs:comment "Returns ACL files based on the current group configuration from the mumo dashboard";
   rdfc:file <../lib/acl.js>;
   rdfc:class "AclEndpoint";
-  rdfs:entrypoint <../>.
+  rdfc:entrypoint <../>.
 
 [ ] a sh:NodeShape;
   sh:targetClass rdfc:AclAuth;

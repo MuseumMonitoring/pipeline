@@ -90,7 +90,7 @@ type FetchArgs = {
     writer: Writer,
     start_url: string,
     delayed?: Reader,
-    save_path?: string,
+    save_path: string | undefined,
     interval_ms: number,
     stop: boolean,
 }
@@ -102,7 +102,8 @@ export class Fetcher extends Processor<FetchArgs> {
     private waitFor!: Promise<void>;
 
     async init(this: FetchArgs & this): Promise<void> {
-        this.logger.info("Init");
+        this.save_path = this.save_path ? this.save_path.substring(7) : undefined;
+        this.logger.debug("Init");
         this.interval_ms = this.interval_ms ?? 1000;
         this.stop = this.stop ?? false;
 
@@ -110,7 +111,6 @@ export class Fetcher extends Processor<FetchArgs> {
         if (this.save_path) {
             try {
                 const { url, at }: { url: string, at: number } = JSON.parse(readFileSync(this.save_path, { encoding: "utf8" }));
-                if (url === undefined || at === undefined) throw "incorrect state"
                 start = url;
                 this.at = at;
             } catch (ex: any) { }
@@ -123,7 +123,7 @@ export class Fetcher extends Processor<FetchArgs> {
         if (this.delayed) {
             this.waitFor = (async () => {
                 for await (const v of this.delayed!.anys()) {
-                    this.logger.info("Didn't expect a message, but got " + JSON.stringify(v))
+                    this.logger.error("Didn't expect a message, but got " + JSON.stringify(v))
                 }
             })();
         } else {
@@ -134,27 +134,20 @@ export class Fetcher extends Processor<FetchArgs> {
     async produce(this: FetchArgs & this): Promise<void> {
         await this.waitFor;
 
-        this.logger.info("Starting for real " + this.current.url);
+        this.logger.debug("Starting for real " + this.current.url);
         while (true) {
             const object = this.current.data;
             const offset = ((object.page - 1) * object.page_size)
             let i = 0;
 
-            console.log("Producing Histories", JSON.stringify(object.history))
-            this.logger.info("Producing Histories " + JSON.stringify(object.history.map(x => (<any>x)["id"])))
-
             for (const o of object.history) {
                 i += 1;
                 if (i + offset <= this.at) {
-                    this.logger.info("Already seen " + (i + offset) + " / " + this.at)
+                    this.logger.debug("Already seen " + (i + offset) + " / " + this.at)
                     continue
                 }
 
                 this.at += 1;
-
-                if ("id" in <any>o) {
-                    console.log("Producing object", (<any>o).id);
-                }
 
                 await this.writer.string(JSON.stringify(<Entry>{ object: o, type: "entity", idx: this.at, idx2: i + offset }));
                 this.save();
@@ -169,17 +162,17 @@ export class Fetcher extends Processor<FetchArgs> {
             let url = this.current.nextUrl();
             while (!url) {
                 await this.writer.string(JSON.stringify(<Entry>{ type: "poll" }));
-                this.logger.info("Waiting some " + this.interval_ms + " ms")
+                this.logger.debug("Waiting some " + this.interval_ms + " ms")
                 await new Promise(res => setTimeout(res, this.interval_ms))
                 this.current = await Fetched.fetch(this.current.url);
                 url = this.current.nextUrl();
             }
-            this.logger.info("fetching " + url)
+            this.logger.debug("fetching " + url)
             this.current = await Fetched.fetch(url);
         } else {
             await this.writer.string(JSON.stringify(<Entry>{ type: "poll" }));
             await new Promise(res => setTimeout(res, this.interval_ms))
-            this.logger.info("refethcing " + this.current.url)
+            this.logger.debug("refetching " + this.current.url)
             this.current = await Fetched.fetch(this.current.url);
         }
     }
