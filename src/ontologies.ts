@@ -21,6 +21,7 @@ export const sosa = createTermNamespace(
     "observes",
     "madeBySensor",
     "hosts",
+    "isHostedBy"
 );
 
 export const mumo = createTermNamespace("http://mumo.be/ns/");

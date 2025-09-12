@@ -7,42 +7,33 @@
 @prefix sh: <http://www.w3.org/ns/shacl#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
-rdfc:MumoFetch a owl:Class, rdfs:Class;
+rdfc:Css a owl:Class, rdfs:Class;
   rdfc:jsImplementationOf rdfc:Processor;
-  rdfs:label "Mumo Fetch";
-  rdfs:comment "Fetches everything following link headers";
-  rdfc:file <../lib/fetch.js>;
-  rdfc:class "Fetcher";
+  rdfs:label "Community Solid Server";
+  rdfs:comment "Starts the community solid server with a file base";
+  rdfc:file <../lib/css.js>;
+  rdfc:class "Css";
   rdfc:entrypoint <../>.
 
 [ ] a sh:NodeShape;
-  sh:targetClass rdfc:MumoFetch;
+  sh:targetClass rdfc:Css;
   sh:property [
-    sh:class rdfc:Reader;
-    sh:path rdfc:delay;
-    sh:name "delayed";
+    sh:datatype xsd:string;
+    sh:path rdfc:config;
+    sh:name "config";
     sh:maxCount 1;
-  ], [
-    sh:class rdfc:Writer;
-    sh:path rdfc:dataOutput;
-    sh:name "writer";
     sh:minCount 1;
-    sh:maxCount 1;
   ], [
     sh:datatype xsd:string;
-    sh:path rdfc:startUrl;
-    sh:name "start_url";
-    sh:minCount 1;
+    sh:path rdfc:path;
+    sh:name "path";
     sh:maxCount 1;
+    sh:minCount 1;
   ], [
     sh:datatype xsd:string;
-    sh:path rdfc:savePath;
-    sh:name "save_path";
+    sh:path rdfc:mainModulePath;
+    sh:name "mainModulePath";
     sh:maxCount 1;
-  ], [
-    sh:datatype xsd:integer;
-    sh:path rdfc:intervalMs;
-    sh:name "interval_ms";
-    sh:maxCount 1;
+    sh:minCount 1;
   ].
 

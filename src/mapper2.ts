@@ -38,6 +38,9 @@ const brands: { [id: string]: Brand[] } = {};
 function brandId(sensor: Sensor, brand: Brand): Term {
     return mumoData.custom(`sensor/${sensor.device_EUI}/${brand.name}-${brand.kind}`);
 }
+function platformId(sensor: Sensor): Term {
+    return mumoData.custom(`sensor/${sensor.device_EUI}`);
+}
 function brandObserves(brand: Brand): Term {
     return mumoData.custom(`kind/${brand.kind}`)
 }
@@ -47,6 +50,7 @@ type Sensor = {
     id: number,
     device_ID: number,
     device_EUI: string,
+    group_ID?: string,
     name: string | undefined,
     url: string | undefined,
     recorded_at: Date
@@ -109,7 +113,7 @@ export class Mapper extends Processor<MapperArgs> {
         // Nothing to produce
     }
 
-    observation(data: Data, sensor: Sensor, done: Set<string>): Quad[] | undefined {
+    async observation(data: Data, sensor: Sensor, done: Set<string>): Promise<Quad[] | undefined> {
         const mBrand = brands[data.deviceIndex];
         const brand = mBrand ? mBrand[data.channelIndex] : undefined;
 
@@ -123,7 +127,7 @@ export class Mapper extends Processor<MapperArgs> {
             this.logger.debug(JSON.stringify({ brand }))
         }
         const subj = mumoData.custom(
-            `${sensor.device_EUI}/${brand.name}/${brand.kind}/${data.timestamp}`
+            `${sensor.device_EUI}/${brand.name}/${brand.kind}/${data.timestamp.replaceAll(' ', 'Z')}`
         );
 
 
@@ -138,8 +142,13 @@ export class Mapper extends Processor<MapperArgs> {
         quads.push(quad(subj, isotc["OM_Observation.result"], resultId));
         const sensorId = brandId(sensor, brand);
         quads.push(quad(subj, sosa.madeBySensor, <Quad_Object>sensorId));
-        // This is incorrect
-        quads.push(quad(<Quad_Subject>sensorId, cidoc.P55_has_current_location, literal("group-" + sensor.id)));
+
+        const platform = platformId(sensor);
+        quads.push(quad(<Quad_Subject>sensorId, sosa.isHostedBy, <Quad_Object>platform));
+        if (sensor.group_ID) {
+            quads.push(quad(<Quad_Subject>platform, cidoc.P55_has_current_location, literal("group-" + sensor.group_ID)));
+        }
+        quads.push(quad(<Quad_Subject>platform, RDFS.terms.label, literal("sensor-" + sensor.id)));
 
         quads.push(quad(resultId, RDF.terms.type, qudt.QuantityValue));
         const observes = brandObserves(brand);
@@ -161,7 +170,9 @@ export class Mapper extends Processor<MapperArgs> {
             ),
         );
 
-        console.log("Adding measurement", subj.value);
+        this.logger.info("Adding measurement", subj.value);
+        // this.logger.info(new N3.Writer().quadsToString(quads));
+        // await new Promise(res => setTimeout(res, 2000));
         return quads;
     }
 
@@ -204,7 +215,7 @@ export class Mapper extends Processor<MapperArgs> {
                         continue;
                     }
 
-                    const quads = this.observation(thing, sensor, done)
+                    const quads = await this.observation(thing, sensor, done)
 
                     if (quads !== undefined) {
                         await this.data.writer.string(
