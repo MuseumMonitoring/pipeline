@@ -26,6 +26,7 @@
   "dependencies": {
     "@rdfc/file-utils-processors-ts": "^0.7.0-alpha.1",
     "@rdfc/js-runner": "^2.0.0-alpha.8",
+    "@rdfc/orchestrator-js": "^1.0.7",
     "@rdfc/sds-processors-ts": "^2.0.0-alpha.2",
     "@rdfjs/types": "^1.1.0",
     "@solid/community-server": "^7.1.7",

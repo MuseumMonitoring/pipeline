@@ -242,7 +242,7 @@ ex:Measurement a sh:NodeShape;
   rdfs:comment "Logs things";
   rdfc:file <./lib/utils.js>;
   rdfc:class "Logger";
-  rdfs:entrypoint <./>.
+  rdfc:entrypoint <./>.
 
 [ ] a sh:NodeShape;
   sh:targetClass <Log>;
