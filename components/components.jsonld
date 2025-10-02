@@ -1,0 +1,11 @@
+{
+  "@context": [
+    "https://linkedsoftwaredependencies.org/bundles/npm/@ajuvercr/mumo-pipeline/^1.0.0/components/context.jsonld"
+  ],
+  "@id": "npmd:@ajuvercr/mumo-pipeline",
+  "@type": "Module",
+  "requireName": "@ajuvercr/mumo-pipeline",
+  "import": [
+    "amp:components/index.jsonld"
+  ]
+}
