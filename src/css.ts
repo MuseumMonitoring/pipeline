@@ -5,12 +5,14 @@ import { App, AppRunner } from "@solid/community-server";
 type Args = {
     config: string,
     path: string,
+    baseUrl: string,
     mainModulePath: string,
 }
 
 export class Css extends Processor<Args> {
     private app: App | undefined;
     async init(this: Args & this): Promise<void> {
+        this.baseUrl = this.baseUrl ?? "http://localhost:3000/"
     }
 
     async transform(this: Args & this): Promise<void> {
@@ -30,7 +32,8 @@ export class Css extends Processor<Args> {
                 // We do not use any custom Components.js variable bindings and set our values through the CLI options below.
                 // Note that this parameter is optional, so you can just drop it.
                 variableBindings: {
-                    'urn:solid-server:default:variable:rootFilePath': this.path.substring(7)
+                    'urn:solid-server:default:variable:rootFilePath': this.path.substring(7),
+                    'urn:solid-server:default:variable:baseUrl': this.baseUrl
                 }
             }
         );
