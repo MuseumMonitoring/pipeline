@@ -1,0 +1,70 @@
+{
+  "@context": [
+    "https://linkedsoftwaredependencies.org/bundles/npm/@ajuvercr/mumo-pipeline/^1.0.0/components/context.jsonld",
+    "https://linkedsoftwaredependencies.org/bundles/npm/@solid/community-server/^7.0.0/components/context.jsonld"
+  ],
+  "@id": "npmd:@ajuvercr/mumo-pipeline",
+  "components": [
+    {
+      "@id": "amp:components/index.jsonld#ProxyDataAccessor",
+      "@type": "Class",
+      "requireElement": "ProxyDataAccessor",
+      "extends": [
+        "css:dist/storage/accessors/DataAccessor.jsonld#DataAccessor"
+      ],
+      "parameters": [
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor_proxy",
+          "range": "xsd:string"
+        }
+      ],
+      "memberFields": [
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_proxy",
+          "memberFieldName": "proxy"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_constructor",
+          "memberFieldName": "constructor"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_getData",
+          "memberFieldName": "getData"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_getMetadata",
+          "memberFieldName": "getMetadata"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_canHandle",
+          "memberFieldName": "canHandle"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_getChildren",
+          "memberFieldName": "getChildren"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_writeDocument",
+          "memberFieldName": "writeDocument"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_writeContainer",
+          "memberFieldName": "writeContainer"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_writeMetadata",
+          "memberFieldName": "writeMetadata"
+        },
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor__member_deleteResource",
+          "memberFieldName": "deleteResource"
+        }
+      ],
+      "constructorArguments": [
+        {
+          "@id": "amp:components/index.jsonld#ProxyDataAccessor_proxy"
+        }
+      ]
+    }
+  ]
+}

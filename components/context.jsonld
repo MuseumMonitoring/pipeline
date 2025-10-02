@@ -1,0 +1,18 @@
+{
+  "@context": [
+    "https://linkedsoftwaredependencies.org/bundles/npm/componentsjs/^5.0.0/components/context.jsonld",
+    {
+      "npmd": "https://linkedsoftwaredependencies.org/bundles/npm/",
+      "amp": "npmd:@ajuvercr/mumo-pipeline/^1.0.0/",
+      "ProxyDataAccessor": {
+        "@id": "amp:components/index.jsonld#ProxyDataAccessor",
+        "@prefix": true,
+        "@context": {
+          "proxy": {
+            "@id": "amp:components/index.jsonld#ProxyDataAccessor_proxy"
+          }
+        }
+      }
+    }
+  ]
+}
