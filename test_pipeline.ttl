@@ -19,18 +19,19 @@
 <> a rdfc:Pipeline;
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
-    rdfc:processor <bucketizer>, <css>;
+    rdfc:processor <bucketizer>,
+      <css>,
+      <fetchData>,
+      <fetchSensors>,
+      <mapper>,
+      <logger>,
+      <sdsify>,
+      <ingestor>,
+      <auth>,
+      <metaReader>,
+      <auth>;
   ].
 
-# <fetchData>,
-# <fetchSensors>,
-# <mapper>,
-# <logger>,
-# <sdsify>,
-# <ingestor>,
-# <auth>,
-# <metaReader>,
-# <auth>;
 rdfc:NodeRunner a rdfc:Runner;
   rdfc:handlesSubjectsOf rdfc:jsImplementationOf;
   rdfc:command "npx js-runner".
@@ -120,15 +121,6 @@ ex:Measurement a sh:NodeShape;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
   rdfc:bucketizeStrategy ( [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath (
-      sosa:madeBySensor
-      sosa:isHostedBy
-      cidoc:P55_has_current_location
-    );
-    tree:fragmentationDefaultName "unlocated";
-    tree:fragmentationPathName ( );
-  ] [
     a tree:TimeBucketFragmentation;
     tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
     tree:level ( [
