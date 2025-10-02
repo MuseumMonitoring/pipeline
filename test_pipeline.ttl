@@ -19,18 +19,17 @@
 <> a rdfc:Pipeline;
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
-    rdfc:processor <fetchData>,
-      <fetchSensors>,
-      <mapper>,
-      <logger>,
-      <sdsify>,
-      <bucketizer>,
-      <ingestor>,
-      <auth>,
-      <metaReader>,
-      <css>;
+    rdfc:processor <bucketizer>, <css>;
   ].
 
+# <fetchData>,
+# <fetchSensors>,
+# <mapper>,
+# <logger>,
+# <sdsify>,
+# <ingestor>,
+# <auth>,
+# <metaReader>,
 # <auth>;
 rdfc:NodeRunner a rdfc:Runner;
   rdfc:handlesSubjectsOf rdfc:jsImplementationOf;
@@ -120,7 +119,7 @@ ex:Measurement a sh:NodeShape;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
-  rdfc:bucketizeStrategy [
+  rdfc:bucketizeStrategy ( [
     a tree:SubjectFragmentation;
     tree:fragmentationPath (
       sosa:madeBySensor
@@ -129,7 +128,7 @@ ex:Measurement a sh:NodeShape;
     );
     tree:fragmentationDefaultName "unlocated";
     tree:fragmentationPathName ( );
-  ], [
+  ] [
     a tree:TimeBucketFragmentation;
     tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
     tree:level ( [
@@ -148,7 +147,7 @@ ex:Measurement a sh:NodeShape;
       tree:range "minute";
       tree:maxSize 10000;
     ] );
-  ];
+  ] );
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
@@ -230,6 +229,7 @@ ex:Measurement a sh:NodeShape;
 
 <css> a rdfc:Css;
   rdfc:config <./css_config.json>;
+  rdfc:baseUrl "https://ldes.mumo.ilabt.imec.be";
   rdfc:path <./ldes2/>;
   rdfc:mainModulePath <./>.
 

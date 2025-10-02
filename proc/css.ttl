@@ -25,6 +25,11 @@ rdfc:Css a owl:Class, rdfs:Class;
     sh:minCount 1;
   ], [
     sh:datatype xsd:string;
+    sh:path rdfc:baseUrl;
+    sh:name "baseUrl";
+    sh:maxCount 1;
+  ], [
+    sh:datatype xsd:string;
     sh:path rdfc:path;
     sh:name "path";
     sh:maxCount 1;
