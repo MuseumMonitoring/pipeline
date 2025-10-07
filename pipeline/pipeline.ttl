@@ -27,9 +27,14 @@
       <fetchSensors>,
       <mapper>,
       <logger>,
-      <sdsify>,
+      <sdsify-data>,
       <ingestor>,
       <metaReader>,
+      <metaReaderSensor>,
+      <sdsify-sensor>,
+      <bucketize-sensor-location>,
+      <bucketize-sensor-id>,
+      <ingest-sensors>,
       <auth>;
   ].
 
@@ -65,7 +70,62 @@
     rdfc:writer <sensors/ttl>;
   ].
 
-<sdsify> a rdfc:Sdsify;
+<sdsify-sensor> a rdfc:Sdsify;
+  rdfc:input <sensors/ttl>;
+  rdfc:output <sensors/sds>;
+  rdfc:objectType sosa:Platform;
+  rdfc:typeFilter sosa:Platform;
+  rdfc:timestampPath <http://schema.org/validFrom>;
+  rdfc:stream <http://data.mumo.be/streams/sensors>;
+  rdfc:shape """
+@prefix sosa: <http://www.w3.org/ns/sosa/>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+
+<Platform> a sh:NodeShape;
+  sh:property [
+    sh:path sosa:hosts;
+    sh:node [
+        sh:property [
+            sh:path sosa:observes;
+            sh:node [];
+        ];
+    ];
+  ].
+""".
+
+<bucketize-sensor-location> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sensors/sds>;
+    rdfc:metadataInput <sensor/metadata>;
+    rdfc:dataOutput <sensor/buckets>;
+    rdfc:metadataOutput <sensor/metadata/2>;
+  ];
+  rdfc:bucketizeStrategy ( <sensorLocationFragmentation> );
+  rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-location>.
+
+<bucketize-sensor-id> a rdfc:Bucketize;
+  rdfc:channels [
+    rdfc:dataInput <sensors/sds>;
+    rdfc:metadataInput <sensor/metadata/2>;
+    rdfc:dataOutput <sensor/buckets>;
+    rdfc:metadataOutput <sensor/metadata/3>;
+  ];
+  rdfc:bucketizeStrategy ( <sensorFragmentation> );
+  rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-id>.
+
+<ingest-sensors> a rdfc:LdesDiskWriter;
+  rdfc:dataInput <sensor/buckets>;
+  rdfc:metadataInput <sensor/metadata/3>;
+  rdfc:directory <./ldes-sensors/>;
+  rdfc:streamName [
+    rdfc:stream <http://data.mumo.be/streams/sensors/by-location>;
+    rdfc:name "by-location";
+  ], [
+    rdfc:stream <http://data.mumo.be/streams/sensors/by-id>;
+    rdfc:name "by-name";
+  ].
+
+<sdsify-data> a rdfc:Sdsify;
   rdfc:input <mapped>;
   rdfc:output <sds-raw>;
   rdfc:objectType <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation>;
@@ -74,13 +134,8 @@
   rdfc:stream <http://data.mumo.be/streams/sds>;
   rdfc:shape """
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix sh: <http://www.w3.org/ns/shacl#>.
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
-@prefix foaf: <http://xmlns.com/foaf/0.1/>.
 @prefix ex: <http://example.org/>.
-@prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
 
 ex:Measurement a sh:NodeShape;
   sh:property [
@@ -110,6 +165,11 @@ ex:Measurement a sh:NodeShape;
   rdfc:output <metadata>;
   rdfc:closeOnEnd "true".
 
+<metaReaderSensor> a rdfc:GlobRead;
+  rdfc:glob <./sensor-metadata.ttl>;
+  rdfc:output <sensor/metadata>;
+  rdfc:closeOnEnd "true".
+
 <by-location> a rdfc:Bucketize;
   rdfc:channels [
     rdfc:dataInput <sds-raw>;
@@ -117,7 +177,7 @@ ex:Measurement a sh:NodeShape;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
-  rdfc:bucketizeStrategy ( <locationFragmentation> <timeFragmentation> );
+  rdfc:bucketizeStrategy ( <dataLocationFragmentation> <timeFragmentation> );
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
@@ -129,7 +189,7 @@ ex:Measurement a sh:NodeShape;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-2>;
   ];
-  rdfc:bucketizeStrategy ( <sensorFragmentation> <timeFragmentation> );
+  rdfc:bucketizeStrategy ( <dataSensorFragmentation> <timeFragmentation> );
   # rdfc:savePath <./buckets_save_2.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream2>.
 
