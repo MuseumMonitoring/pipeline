@@ -3,16 +3,26 @@
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix tree: <https://w3id.org/tree#>.
 
-<locationFragmentation> a tree:SubjectFragmentation;
+<sensorLocationFragmentation> a tree:SubjectFragmentation;
+  tree:fragmentationPath ( cidoc:P55_has_current_location );
+  tree:fragmentationDefaultName "unlocated";
+  tree:fragmentationPathName ( ).
+
+<sensorFragmentation> a tree:SubjectFragmentation;
+  tree:fragmentationPath ( rdfs:label );
+  tree:fragmentationDefaultName "unnamed";
+  tree:fragmentationPathName ( ).
+
+<dataLocationFragmentation> a tree:SubjectFragmentation;
   tree:fragmentationPath (
-    sosa:madeBySensor
+    sosa:madeySensor
     sosa:isHostedBy
     cidoc:P55_has_current_location
   );
   tree:fragmentationDefaultName "unlocated";
   tree:fragmentationPathName ( ).
 
-<sensorFragmentation> a tree:SubjectFragmentation;
+<dataSensorFragmentation> a tree:SubjectFragmentation;
   tree:fragmentationPath ( sosa:madeBySensor sosa:isHostedBy );
   tree:fragmentationDefaultName "unknown";
   tree:fragmentationPathName rdfs:label.

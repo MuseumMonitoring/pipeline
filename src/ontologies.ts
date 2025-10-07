@@ -18,6 +18,8 @@ export const qudtUnit = createTermNamespace(
 export const sosa = createTermNamespace(
     "http://www.w3.org/ns/sosa/",
     "Sensor",
+    "Platform",
+    "ObservableProperty",
     "observes",
     "madeBySensor",
     "hosts",
@@ -35,6 +37,7 @@ export const isotc = createTermNamespace(
 );
 
 export const cidoc = createTermNamespace("http://www.cidoc-crm.org/cidoc-crm/", "P55_has_current_location");
+export const SCHEMA = createTermNamespace("https://schema.org/", "validFrom");
 
 export const oslo = createTermNamespace(
     "https://data.vlaanderen.be/ns/observaties-en-metingen#",

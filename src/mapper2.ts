@@ -1,10 +1,11 @@
 import { Processor, Reader, Writer } from "@rdfc/js-runner";
 import { Entry } from "./fetch";
 import { Quad, Quad_Object, Term } from "@rdfjs/types";
-import { cidoc, isotc, mumoData, qudt, sosa } from "./ontologies";
+import { cidoc, isotc, mumoData, qudt, SCHEMA, sosa } from "./ontologies";
 import { DataFactory, Quad_Subject } from "n3";
 import * as N3 from "n3";
-import { RDF, RDFS, XSD } from "@treecg/types";
+import { DC, RDF, RDFS, XSD } from "@treecg/types";
+import { Builder } from "./builder";
 const { quad, literal, blankNode } = DataFactory;
 
 type Brand = {
@@ -13,6 +14,8 @@ type Brand = {
 }
 
 const brands: { [id: string]: Brand[] } = {};
+const brandNames: { [id: string]: Brand[] } = {};
+
 (<[string, string[]][]>[
     ["internal", ["volatage", "percentcharged"]],
     ["bme680", ["temperature", "humidity", "pressure"]],
@@ -33,10 +36,14 @@ const brands: { [id: string]: Brand[] } = {};
     }
     const things = kinds.map(kind => ({ name, kind }));
     brands[i + ""] = things;
+    brandNames[name] = things;
 });
 
 function brandId(sensor: Sensor, brand: Brand): Term {
     return mumoData.custom(`sensor/${sensor.device_EUI}/${brand.name}-${brand.kind}`);
+}
+function brandPartOf(sensor: Sensor, brand: Brand): Term {
+    return mumoData.custom(`sensor/${sensor.device_EUI}/${brand.name}`);
 }
 function platformId(sensor: Sensor): Term {
     return mumoData.custom(`sensor/${sensor.device_EUI}`);
@@ -50,6 +57,7 @@ type Sensor = {
     id: number,
     device_ID: number,
     device_EUI: string,
+    brands: string[] | undefined,
     group_ID?: string,
     name: string | undefined,
     url: string | undefined,
@@ -96,14 +104,22 @@ type MapperArgs = {
 export class Mapper extends Processor<MapperArgs> {
     sensorData: { [eui: string]: History } = {}
 
+    sensorsAreSetup: Promise<void> = new Promise(() => { });;
+
     async init(this: MapperArgs & this): Promise<void> {
     }
 
     async transform(this: MapperArgs & this): Promise<void> {
-        await this.setupSensor(this.sensor.reader);
+
+        this.sensorsAreSetup = this.setupSensor(this.sensor.reader, this.sensor.writer);
+
+        // This should go when backpressure is implemented
+        await this.sensorsAreSetup;
 
         this.logger.debug("Would setup data");
         const prom = this.setupData(this.data.reader);
+
+        // This should go when backpressure is implemented
         this.trigger.close();
         await prom;
         this.logger.debug(JSON.stringify(this.sensorData, undefined, 2))
@@ -113,70 +129,70 @@ export class Mapper extends Processor<MapperArgs> {
         // Nothing to produce
     }
 
-    async observation(data: Data, sensor: Sensor, done: Set<string>): Promise<Quad[] | undefined> {
+    sensorQuads(sensor: Sensor): Quad[] | undefined {
+        const quads: Quad[] = [];
+
+        const builder = new Builder(platformId(sensor), quads)
+            .tripleThis(RDF.terms.type, sosa.Platform)
+            .tripleThis(SCHEMA.validFrom, literal(sensor.recorded_at.toISOString(), XSD.terms.dateTime))
+            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
+
+        if (sensor.group_ID) {
+            builder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
+        }
+        const foundBrands = (sensor.brands || []).flatMap(b => brandNames[b] || []);
+        for (const brand of foundBrands) {
+            const b = builder.triple(sosa.hosts, brandId(sensor, brand))
+                .tripleThis(RDF.terms.type, sosa.Sensor)
+                .tripleThis(DC.terms.custom("isPartOf"), brandPartOf(sensor, brand))
+                .tripleThis(RDFS.terms.label, literal(`${brand.name}-${brand.kind}`));
+
+            b.triple(sosa.observes, brandObserves(brand))
+                .tripleThis(RDF.terms.type, sosa.ObservableProperty)
+                .tripleThis(RDFS.terms.label, literal(mumoData.custom(brand.kind).value));
+        }
+
+        return quads;
+    }
+
+    observation(data: Data, sensor: Sensor, done: Set<string>): Quad[] | undefined {
         const mBrand = brands[data.deviceIndex];
         const brand = mBrand ? mBrand[data.channelIndex] : undefined;
-
         const quads: Quad[] = [];
-        const resultId = blankNode();
 
         if (!brand) {
             this.logger.error("No brand found for " + JSON.stringify({ data, sensor }));
             return;
-        } else {
-            this.logger.debug(JSON.stringify({ brand }))
         }
+
         const subj = mumoData.custom(
             `${sensor.device_EUI}/${brand.name}/${brand.kind}/${data.timestamp.replaceAll(' ', 'Z')}`
         );
+        const measurement = new Builder(subj, quads)
+            .tripleThis(RDF.terms.type, isotc.OM_Observation)
+            .tripleThis(isotc["OM_Observation.resultTime"],
+                literal(new Date(data.timestamp).toISOString(), XSD.terms.dateTime));
 
+        measurement.triple(isotc["OM_Observation.result"])
+            .tripleThis(RDF.terms.type, qudt.QuantityValue)
+            .tripleThis(qudt.numericValue, literal(data.value, XSD.terms.custom("float")))
+            .triple(qudt.unit, brandObserves(brand))
+            .tripleThis(RDFS.terms.label, literal(mumoData.custom(brand.kind).value));
 
-        quads.push(quad(subj, RDF.terms.type, isotc.OM_Observation));
-        quads.push(
-            quad(
-                subj,
-                isotc["OM_Observation.resultTime"],
-                literal(new Date(data.timestamp).toISOString(), XSD.terms.dateTime),
-            ),
-        );
-        quads.push(quad(subj, isotc["OM_Observation.result"], resultId));
-        const sensorId = brandId(sensor, brand);
-        quads.push(quad(subj, sosa.madeBySensor, <Quad_Object>sensorId));
+        const platformBuilder = measurement.triple(sosa.madeBySensor, <Quad_Object>brandId(sensor, brand))
+            .triple(sosa.isHostedBy, platformId(sensor))
+            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
 
-        const platform = platformId(sensor);
-        quads.push(quad(<Quad_Subject>sensorId, sosa.isHostedBy, <Quad_Object>platform));
         if (sensor.group_ID) {
-            quads.push(quad(<Quad_Subject>platform, cidoc.P55_has_current_location, literal("group-" + sensor.group_ID)));
+            platformBuilder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
         }
-        quads.push(quad(<Quad_Subject>platform, RDFS.terms.label, literal("sensor-" + sensor.id)));
-
-        quads.push(quad(resultId, RDF.terms.type, qudt.QuantityValue));
-        const observes = brandObserves(brand);
-        quads.push(
-            quad(resultId, qudt.unit, <Quad_Object>observes),
-        );
-        quads.push(
-            quad(
-                <Quad_Subject>observes,
-                RDFS.terms.label,
-                literal(mumoData.custom(brand.kind).value),
-            ),
-        );
-        quads.push(
-            quad(
-                resultId,
-                qudt.numericValue,
-                literal(data.value, XSD.terms.custom("float")),
-            ),
-        );
 
         this.logger.info("Adding measurement", subj.value);
-        // this.logger.info(new N3.Writer().quadsToString(quads));
-        // await new Promise(res => setTimeout(res, 2000));
+
         return quads;
     }
 
-    setupSensor(this: MapperArgs & this, sensors: Reader): Promise<void> {
+    setupSensor(this: MapperArgs & this, sensors: Reader, writer: Writer): Promise<void> {
         return new Promise(async res => {
             for await (const st of sensors.strings()) {
                 const entity = <Entry<Sensor>>JSON.parse(st);
@@ -185,14 +201,24 @@ export class Mapper extends Processor<MapperArgs> {
                         res()
                         break
                     case "entity":
-                        if (!this.sensorData[entity.object.device_ID]) {
-                            this.sensorData[entity.object.device_ID] = [];
+                        const sensor = entity.object;
+                        if (!this.sensorData[sensor.device_ID]) {
+                            this.sensorData[sensor.device_ID] = [];
                         }
-                        entity.object.recorded_at = new Date(entity.object.recorded_at);
-                        this.sensorData[entity.object.device_ID]!.unshift({
-                            recorded_at: new Date(entity.object.recorded_at),
-                            sensor: entity.object
+                        sensor.recorded_at = new Date(sensor.recorded_at);
+                        this.sensorData[sensor.device_ID]!.unshift({
+                            recorded_at: new Date(sensor.recorded_at),
+                            sensor
                         });
+
+                        sensor.brands = ["internal", "bme680"];
+                        const quads = this.sensorQuads(sensor);
+                        if (quads !== undefined) {
+                            await writer.string(
+                                new N3.Writer().quadsToString(quads)
+                            );
+                        }
+
                         break;
                 }
             }
@@ -202,12 +228,11 @@ export class Mapper extends Processor<MapperArgs> {
     async setupData(this: MapperArgs & this, data: Reader): Promise<void> {
         const done = new Set<string>();
         for await (const obj of data.strings()) {
+            await this.sensorsAreSetup;
             try {
                 const entity = <Entry<Data>>JSON.parse(obj);
                 if (entity.type === "entity") {
                     const thing = entity.object;
-                    console.log("THING", thing.id, entity.idx, entity.idx2)
-
                     const sensor = sensorFor(this.sensorData[thing.device_ID]!, new Date(thing.timestamp), true);
 
                     if (sensor === undefined) {
@@ -215,14 +240,14 @@ export class Mapper extends Processor<MapperArgs> {
                         continue;
                     }
 
-                    const quads = await this.observation(thing, sensor, done)
-
+                    const quads = this.observation(thing, sensor, done)
                     if (quads !== undefined) {
                         await this.data.writer.string(
                             new N3.Writer().quadsToString(quads)
                         );
                     }
                 }
+                // Ignore poll events, we don't care
             } catch (ex: unknown) {
                 this.logger.error("Error " + JSON.stringify(ex));
             }
