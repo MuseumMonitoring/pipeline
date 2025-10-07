@@ -6,20 +6,22 @@
 @prefix rdfc: <https://w3id.org/rdf-connect#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
-<> owl:imports <./node_modules/@rdfc/js-runner/index.ttl>.
-<> owl:imports <./proc/fetch.ttl>.
-<> owl:imports <./proc/mumo_mapper.ttl>.
-<> owl:imports <./proc/acl_auth.ttl>.
-<> owl:imports <./proc/css.ttl>.
-<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
-<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
-<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
-<> owl:imports <./node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
-<> owl:imports <./node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
+<> owl:imports <./bucketize_strategies.ttl>.
+<> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
+<> owl:imports <../proc/fetch.ttl>.
+<> owl:imports <../proc/mumo_mapper.ttl>.
+<> owl:imports <../proc/acl_auth.ttl>.
+<> owl:imports <../proc/css.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
+<> owl:imports <../node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
+<> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
 <> a rdfc:Pipeline;
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
-    rdfc:processor <bucketizer>,
+    rdfc:processor <by-location>,
+      <by-sensor>,
       <css>,
       <fetchData>,
       <fetchSensors>,
@@ -27,14 +29,9 @@
       <logger>,
       <sdsify>,
       <ingestor>,
-      <auth>,
       <metaReader>,
       <auth>;
   ].
-
-rdfc:NodeRunner a rdfc:Runner;
-  rdfc:handlesSubjectsOf rdfc:jsImplementationOf;
-  rdfc:command "npx js-runner".
 
 <sensors/json> a rdfc:Reader, rdfc:Writer.
 <sensors/ttl> a rdfc:Reader, rdfc:Writer.
@@ -47,7 +44,7 @@ rdfc:NodeRunner a rdfc:Runner;
   rdfc:dataOutput <data>;
   rdfc:delay <trigger>;
   rdfc:intervalMs 5000;
-  rdfc:savePath <./data-save.json>;
+  rdfc:savePath <./state/data-save.json>;
   # rdfc:startUrl "http://localhost:8080/history.php?data".
   rdfc:startUrl "https://www.mumodashboard.be/history.php?data".
 
@@ -109,101 +106,44 @@ ex:Measurement a sh:NodeShape;
 <meta/buckets-1> a rdfc:Reader, rdfc:Writer.
 <meta/buckets-2> a rdfc:Reader, rdfc:Writer.
 <metaReader> a rdfc:GlobRead;
-  rdfc:glob <./data/metadataIn.ttl>;
+  rdfc:glob <./metadataIn.ttl>;
   rdfc:output <metadata>;
   rdfc:closeOnEnd "true".
 
-<bucketizer> a rdfc:Bucketize;
+<by-location> a rdfc:Bucketize;
   rdfc:channels [
     rdfc:dataInput <sds-raw>;
     rdfc:metadataInput <metadata>;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
-  rdfc:bucketizeStrategy ( [
-    a tree:TimeBucketFragmentation;
-    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
-    tree:level ( [
-      tree:range "year";
-      tree:maxSize 0;
-    ] [
-      tree:range "month";
-      tree:maxSize 0;
-    ] [
-      tree:range "day-of-month";
-      tree:maxSize 1000;
-    ] [
-      tree:range "hour";
-      tree:maxSize 1000;
-    ] [
-      tree:range "minute";
-      tree:maxSize 10000;
-    ] );
-  ] );
+  rdfc:bucketizeStrategy ( <locationFragmentation> <timeFragmentation> );
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
-<bucketizer3> a rdfc:Bucketize;
-  rdfc:channels [
-    rdfc:dataInput <sds>;
-    rdfc:metadataInput <metadata>;
-    rdfc:dataOutput <bucketized>;
-    rdfc:metadataOutput <bucketizedMetadata>;
-  ];
-  rdfc:bucketizeStrategy ( [
-    # One or more bucketize strategies
-    a tree:SubjectFragmentation;
-    # Create a bucket based on this path
-    tree:fragmentationPath ( );
-  ] [
-    a tree:PageFragmentation;
-    # Create a new bucket when the previous bucket has 2 members
-    tree:pageSize 2;
-  ] );
-  rdfc:savePath <./buckets_save.json>;
-  rdfc:outputStreamId <HamburgDatastreams>;
-  rdfc:prefix "root/".
-
 # The root fragment is located at '/root/' this defaults to ''
-<bucketizer2> a rdfc:Bucketize;
+<by-sensor> a rdfc:Bucketize;
   rdfc:channels [
     rdfc:dataInput <sds-raw>;
     rdfc:metadataInput <meta/buckets-1>;
     rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-2>;
   ];
-  rdfc:bucketizeStrategy ( [
-    a tree:SubjectFragmentation;
-    tree:fragmentationPath ( sosa:madeBySensor sosa:isHostedBy );
-    tree:fragmentationDefaultName "unknown";
-    tree:fragmentationPathName rdfs:label;
-  ] [
-    a tree:TimeBucketFragmentation;
-    tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
-    tree:level ( [
-      tree:range "year";
-      tree:maxSize 0;
-    ] [
-      tree:range "month";
-      tree:maxSize 0;
-    ] [
-      tree:range "day-of-month";
-      tree:maxSize 1000;
-    ] [
-      tree:range "hour";
-      tree:maxSize 1000;
-    ] [
-      tree:range "minute";
-      tree:maxSize 10000;
-    ] );
-  ] );
+  rdfc:bucketizeStrategy ( <sensorFragmentation> <timeFragmentation> );
   # rdfc:savePath <./buckets_save_2.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream2>.
 
 <ingestor> a rdfc:LdesDiskWriter;
   rdfc:dataInput <raw/buckets-1>;
   rdfc:metadataInput <meta/buckets-2>;
-  rdfc:directory "./ldes2/".
+  rdfc:directory <./ldes2/>;
+  rdfc:streamName [
+    rdfc:stream <https://w3id.org/sds#Stream>;
+    rdfc:name "by-location";
+  ], [
+    rdfc:stream <https://w3id.org/sds#Stream2>;
+    rdfc:name "by-sensor";
+  ].
 
 <auth> a rdfc:AclAuth;
   # rdfc:usersUrl "https://www.mumodashboard.be/history.php?users";
@@ -223,7 +163,7 @@ ex:Measurement a sh:NodeShape;
   rdfc:config <./css_config.json>;
   rdfc:baseUrl "https://ldes.mumo.ilabt.imec.be";
   rdfc:path <./ldes2/>;
-  rdfc:mainModulePath <./>.
+  rdfc:mainModulePath <../>.
 
 <logger> a <Log>;
   rdfc:input <mapped>.
@@ -232,9 +172,9 @@ ex:Measurement a sh:NodeShape;
   rdfc:jsImplementationOf rdfc:Processor;
   rdfs:label "Log Things";
   rdfs:comment "Logs things";
-  rdfc:file <./lib/utils.js>;
+  rdfc:file <../lib/utils.js>;
   rdfc:class "Logger";
-  rdfc:entrypoint <./>.
+  rdfc:entrypoint <../>.
 
 [ ] a sh:NodeShape;
   sh:targetClass <Log>;

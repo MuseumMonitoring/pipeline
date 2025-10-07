@@ -1,0 +1,38 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
+@prefix sosa: <http://www.w3.org/ns/sosa/>.
+@prefix tree: <https://w3id.org/tree#>.
+
+<locationFragmentation> a tree:SubjectFragmentation;
+  tree:fragmentationPath (
+    sosa:madeBySensor
+    sosa:isHostedBy
+    cidoc:P55_has_current_location
+  );
+  tree:fragmentationDefaultName "unlocated";
+  tree:fragmentationPathName ( ).
+
+<sensorFragmentation> a tree:SubjectFragmentation;
+  tree:fragmentationPath ( sosa:madeBySensor sosa:isHostedBy );
+  tree:fragmentationDefaultName "unknown";
+  tree:fragmentationPathName rdfs:label.
+
+<timeFragmentation> a tree:TimeBucketFragmentation;
+  tree:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
+  tree:level ( [
+    tree:range "year";
+    tree:maxSize 0;
+  ] [
+    tree:range "month";
+    tree:maxSize 0;
+  ] [
+    tree:range "day-of-month";
+    tree:maxSize 1000;
+  ] [
+    tree:range "hour";
+    tree:maxSize 1000;
+  ] [
+    tree:range "minute";
+    tree:maxSize 10000;
+  ] ).
+
