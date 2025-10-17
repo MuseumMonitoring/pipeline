@@ -1,3 +1,4 @@
+@prefix dcterms: <http://purl.org/dc/terms/>.
 @prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
@@ -20,7 +21,10 @@
   ldes:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
   dcat:identifier <http://localhost:3000/ldes>.
 
-# http://www.cidoc-crm.org/cidoc-crm/P53_has_former_or_current_location
+# extra information about the LDES itselve
+<index.trig> ldes:timestampPath dcterms:modified;
+  ldes:versionOfPath dcterms:isVersionOf.
+
 <Platform> a sh:NodeShape;
   sh:targetClass sosa:Platform;
   sh:property [

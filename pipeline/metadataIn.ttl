@@ -24,20 +24,25 @@
   dcat:identifier <http://localhost:3000/ldes>.
 
 # http://www.cidoc-crm.org/cidoc-crm/P53_has_former_or_current_location
-ex:Shape a sh:NodeShape;
+ex:Shape a <http://www.w3.org/ns/shacl#NodeShape>;
   sh:property [
-    sh:path sosa:hosts;
-    sh:minCount 1;
+    sh:path sosa:madeBySensor;
+    sh:node [
+      a sh:NodeShape;
+      sh:property [
+        sh:path sosa:isHostedBy;
+        sh:node [
+          a sh:NodeShape;
+          sh:property [ sh:path <http://www.w3.org/2000/01/rdf-schema#label> ];
+        ];
+      ];
+    ];
+  ];
+  sh:property [
+    sh:path <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.result>;
     sh:node [ sh:property [
-      sh:path rdf:type;
-      sh:minCount 1;
-    ] ];
-  ], [
-    sh:path cidoc:P55_has_current_location;
-    sh:minCount 1;
-    sh:node [ sh:property [
-      sh:path rdf:type;
-      sh:minCount 1;
+      sh:path <http://qudt.org/1.1/schema/qudt#unit>;
+      sh:node [ ];
     ] ];
   ].
 

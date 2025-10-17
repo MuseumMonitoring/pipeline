@@ -75,7 +75,7 @@
   rdfc:output <sensors/sds>;
   rdfc:objectType sosa:Platform;
   rdfc:typeFilter sosa:Platform;
-  rdfc:timestampPath <http://schema.org/validFrom>;
+  # rdfc:timestampPath <http://schema.org/validFrom>;
   rdfc:stream <http://data.mumo.be/streams/sensors>;
   rdfc:shape """
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
