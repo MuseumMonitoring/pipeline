@@ -1,7 +1,7 @@
 import { Processor, Reader, Writer } from "@rdfc/js-runner";
 import { Entry } from "./fetch";
 import { Quad, Quad_Object, Term } from "@rdfjs/types";
-import { cidoc, isotc, mumoData, qudt, SCHEMA, sosa } from "./ontologies";
+import { cidoc, DCTERMS, isotc, mumoData, qudt, sosa } from "./ontologies";
 import { DataFactory, Quad_Subject } from "n3";
 import * as N3 from "n3";
 import { DC, RDF, RDFS, XSD } from "@treecg/types";
@@ -47,6 +47,9 @@ function brandPartOf(sensor: Sensor, brand: Brand): Term {
 }
 function platformId(sensor: Sensor): Term {
     return mumoData.custom(`sensor/${sensor.device_EUI}`);
+}
+function versionedPlatformId(sensor: Sensor, date: Date) {
+    return mumoData.custom(`sensor/${sensor.device_EUI}/${date.toISOString()}`);
 }
 function brandObserves(brand: Brand): Term {
     return mumoData.custom(`kind/${brand.kind}`)
@@ -132,9 +135,11 @@ export class Mapper extends Processor<MapperArgs> {
     sensorQuads(sensor: Sensor): Quad[] | undefined {
         const quads: Quad[] = [];
 
-        const builder = new Builder(platformId(sensor), quads)
+        const id = versionedPlatformId(sensor, sensor.recorded_at);
+        const builder = new Builder(id, quads, id)
             .tripleThis(RDF.terms.type, sosa.Platform)
-            .tripleThis(SCHEMA.validFrom, literal(sensor.recorded_at.toISOString(), XSD.terms.dateTime))
+            .tripleThis(DCTERMS.isVersionOf, platformId(sensor))
+            .tripleThis(DCTERMS.modified, literal(sensor.recorded_at.toISOString(), XSD.terms.dateTime))
             .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
 
         if (sensor.group_ID) {
@@ -149,7 +154,7 @@ export class Mapper extends Processor<MapperArgs> {
 
             b.triple(sosa.observes, brandObserves(brand))
                 .tripleThis(RDF.terms.type, sosa.ObservableProperty)
-                .tripleThis(RDFS.terms.label, literal(mumoData.custom(brand.kind).value));
+                .tripleThis(RDFS.terms.label, literal(brand.kind));
         }
 
         return quads;
