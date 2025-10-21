@@ -25,9 +25,10 @@
   "license": "ISC",
   "dependencies": {
     "@rdfc/file-utils-processors-ts": "^0.7.0-alpha.1",
-    "@rdfc/js-runner": "^2.0.0-alpha.8",
-    "@rdfc/orchestrator-js": "^1.0.7",
-    "@rdfc/sds-processors-ts": "^2.0.0-alpha.2",
+    "@rdfc/js-runner": "^3.0.0",
+    "@rdfc/orchestrator-js": "^2.0.0",
+    "@rdfc/sds-processors-ts": "^2.0.1-alpha.1",
+    "@rdfc/stream-utils": "^0.0.1",
     "@rdfjs/types": "^1.1.0",
     "@solid/community-server": "^7.1.7",
     "@treecg/types": "^0.4.6",

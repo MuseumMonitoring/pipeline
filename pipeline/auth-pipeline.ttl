@@ -1,0 +1,39 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdfl: <https://w3id.org/rdf-lens/ontology#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+
+<> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
+<> owl:imports <../proc/acl_auth.ttl>.
+<> owl:imports <../proc/css.ttl>.
+<> a rdfc:Pipeline;
+  rdfc:consistsOf [
+    rdfc:instantiates rdfc:NodeRunner;
+    rdfc:processor <css>, <auth>;
+  ].
+
+<auth> a rdfc:AclAuth;
+  rdfc:usersUrl [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "http://localhost:8080/history.php?users";
+    rdfl:envKey "userHistory";
+  ];
+  rdfc:groupsUrl [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "http://localhost:8080/history.php?groups";
+    rdfl:envKey "groupHistory";
+  ];
+  rdfc:port 7111;
+  rdfc:interval 1000;
+  rdfc:publicGroup 1, 2, 5, 7;
+  rdfc:protected "/location", "/by-sensor";
+  rdfc:public "/location/.acl",
+    "/by-sensor/.acl",
+    "/location/root/.acl",
+    "/by-sensor/root/.acl".
+
+<css> a rdfc:Css;
+  rdfc:config <./css_config.json>;
+  rdfc:baseUrl "http://solid:3000/";
+  rdfc:path <./ldes/>;
+  rdfc:mainModulePath <../>.
+
