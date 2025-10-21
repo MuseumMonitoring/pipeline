@@ -41,7 +41,7 @@ export class Css extends Processor<Args> {
         await this.app!.start();
         this.logger.info("App started")
     }
-    async produce(this: Args & this): Promise<void> {
-        // Nothing
+    produce(this: Args & this): Promise<void> {
+        return new Promise(res => { })
     }
 }

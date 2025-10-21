@@ -1,3 +1,4 @@
+@prefix rdfl: <https://w3id.org/rdf-lens/ontology#>.
 @prefix cidoc: <http://www.cidoc-crm.org/cidoc-crm/>.
 @prefix sosa: <http://www.w3.org/ns/sosa/>.
 @prefix tree: <https://w3id.org/tree#>.
@@ -10,40 +11,44 @@
 <> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <../proc/fetch.ttl>.
 <> owl:imports <../proc/mumo_mapper.ttl>.
-<> owl:imports <../proc/acl_auth.ttl>.
-<> owl:imports <../proc/css.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/bucketizer.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/shapify.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/sdsify.ttl>.
 <> owl:imports <../node_modules/@rdfc/file-utils-processors-ts/processors.ttl>.
 <> owl:imports <../node_modules/@rdfc/sds-processors-ts/configs/ldes_disk_writer.ttl>.
+<> owl:imports <../node_modules/@rdfc/stream-utils/index.ttl>.
 <> a rdfc:Pipeline;
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
     rdfc:processor <by-location>,
       <by-sensor>,
-      <css>,
       <fetchData>,
       <fetchSensors>,
       <mapper>,
-      <logger>,
       <sdsify-data>,
       <ingestor>,
       <metaReader>,
       <metaReaderSensor>,
+      <data-combine>,
+      <sds-dup>,
       <sdsify-sensor>,
+      <sensor-fan>,
+      <sensor-converge>,
       <bucketize-sensor-location>,
       <bucketize-sensor-id>,
-      <ingest-sensors>,
-      <auth>;
+      <ingest-sensors>;
   ].
 
 <sensors/json> a rdfc:Reader, rdfc:Writer.
 <sensors/ttl> a rdfc:Reader, rdfc:Writer.
-<mapped> a rdfc:Reader, rdfc:Writer.
+<mapped> a rdfc:Reader, rdfc:Writer;
+  rdfc:log "debug".
+
 <data> a rdfc:Reader, rdfc:Writer.
 <trigger> a rdfc:Reader, rdfc:Writer.
 <sds-raw> a rdfc:Reader, rdfc:Writer.
+<sds-raw-1> a rdfc:Reader, rdfc:Writer.
+<sds-raw-2> a rdfc:Reader, rdfc:Writer.
 #
 <fetchData> a rdfc:MumoFetch;
   rdfc:dataOutput <data>;
@@ -51,13 +56,21 @@
   rdfc:intervalMs 5000;
   rdfc:savePath <./state/data-save.json>;
   # rdfc:startUrl "http://localhost:8080/history.php?data".
-  rdfc:startUrl "https://www.mumodashboard.be/history.php?data".
+  rdfc:startUrl [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "https://www.mumodashboard.be/history.php?data";
+    rdfl:envKey "dataHistory";
+  ].
 
 <fetchSensors> a rdfc:MumoFetch;
   rdfc:dataOutput <sensors/json>;
   rdfc:intervalMs 5000;
   # rdfc:startUrl "http://localhost:8080/history.php?sensors".
-  rdfc:startUrl "https://www.mumodashboard.be/history.php?sensors".
+  rdfc:startUrl [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "https://www.mumodashboard.be/history.php?sensors";
+    rdfl:envKey "sensorHistory";
+  ].
 
 <mapper> a rdfc:MumoMapper;
   rdfc:trigger <trigger>;
@@ -93,11 +106,19 @@
   ].
 """.
 
+<sensor-fan> a rdfc:FanOut;
+  rdfc:reader <sensors/sds>;
+  rdfc:writer <sensors/sds-1>, <sensors/sds-2>.
+
+<sensor-converge> a rdfc:Converge;
+  rdfc:reader <sensor/buckets-1>, <sensor/buckets-2>;
+  rdfc:writer <sensor/buckets>.
+
 <bucketize-sensor-location> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sensors/sds>;
+    rdfc:dataInput <sensors/sds-1>;
     rdfc:metadataInput <sensor/metadata>;
-    rdfc:dataOutput <sensor/buckets>;
+    rdfc:dataOutput <sensor/buckets-1>;
     rdfc:metadataOutput <sensor/metadata/2>;
   ];
   rdfc:bucketizeStrategy ( <sensorLocationFragmentation> );
@@ -105,9 +126,9 @@
 
 <bucketize-sensor-id> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sensors/sds>;
+    rdfc:dataInput <sensors/sds-2>;
     rdfc:metadataInput <sensor/metadata/2>;
-    rdfc:dataOutput <sensor/buckets>;
+    rdfc:dataOutput <sensor/buckets-2>;
     rdfc:metadataOutput <sensor/metadata/3>;
   ];
   rdfc:bucketizeStrategy ( <sensorFragmentation> );
@@ -116,7 +137,7 @@
 <ingest-sensors> a rdfc:LdesDiskWriter;
   rdfc:dataInput <sensor/buckets>;
   rdfc:metadataInput <sensor/metadata/3>;
-  rdfc:directory <./ldes-sensors/>;
+  rdfc:directory <./ldes/sensors/>;
   rdfc:streamName [
     rdfc:stream <http://data.mumo.be/streams/sensors/by-location>;
     rdfc:name "by-location";
@@ -156,6 +177,10 @@ ex:Measurement a sh:NodeShape;
   ].
 """.
 
+<sds-dup> a rdfc:FanOut;
+  rdfc:reader <sds-raw>;
+  rdfc:writer <sds-raw-1>, <sds-raw-2>.
+
 <metadata> a rdfc:Reader, rdfc:Writer.
 <raw/buckets-1> a rdfc:Reader, rdfc:Writer.
 <meta/buckets-1> a rdfc:Reader, rdfc:Writer.
@@ -170,23 +195,28 @@ ex:Measurement a sh:NodeShape;
   rdfc:output <sensor/metadata>;
   rdfc:closeOnEnd "true".
 
+<data-combine> a rdfc:Converge;
+  rdfc:reader <raw/buckets-1-1>, <raw/buckets-1-2>;
+  rdfc:writer <raw/buckets-1>.
+
 <by-location> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sds-raw>;
+    rdfc:dataInput <sds-raw-1>;
     rdfc:metadataInput <metadata>;
-    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:dataOutput <raw/buckets-1-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
   rdfc:bucketizeStrategy ( <dataLocationFragmentation> <timeFragmentation> );
+  # rdfc:bucketizeStrategy <dataLocationFragmentation>;
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
 # The root fragment is located at '/root/' this defaults to ''
 <by-sensor> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sds-raw>;
+    rdfc:dataInput <sds-raw-2>;
     rdfc:metadataInput <meta/buckets-1>;
-    rdfc:dataOutput <raw/buckets-1>;
+    rdfc:dataOutput <raw/buckets-1-2>;
     rdfc:metadataOutput <meta/buckets-2>;
   ];
   rdfc:bucketizeStrategy ( <dataSensorFragmentation> <timeFragmentation> );
@@ -196,7 +226,7 @@ ex:Measurement a sh:NodeShape;
 <ingestor> a rdfc:LdesDiskWriter;
   rdfc:dataInput <raw/buckets-1>;
   rdfc:metadataInput <meta/buckets-2>;
-  rdfc:directory <./ldes2/>;
+  rdfc:directory <./ldes/data>;
   rdfc:streamName [
     rdfc:stream <https://w3id.org/sds#Stream>;
     rdfc:name "by-location";
@@ -204,26 +234,6 @@ ex:Measurement a sh:NodeShape;
     rdfc:stream <https://w3id.org/sds#Stream2>;
     rdfc:name "by-sensor";
   ].
-
-<auth> a rdfc:AclAuth;
-  # rdfc:usersUrl "https://www.mumodashboard.be/history.php?users";
-  # rdfc:groupsUrl "https://www.mumodashboard.be/history.php?groups";
-  rdfc:usersUrl "http://localhost:8080/history.php?users";
-  rdfc:groupsUrl "http://localhost:8080/history.php?groups";
-  rdfc:port 7111;
-  rdfc:interval 1000;
-  rdfc:publicGroup 1, 2, 5, 7;
-  rdfc:protected "/location", "/by-sensor";
-  rdfc:public "/location/.acl",
-    "/by-sensor/.acl",
-    "/location/root/.acl",
-    "/by-sensor/root/.acl".
-
-<css> a rdfc:Css;
-  rdfc:config <./css_config.json>;
-  rdfc:baseUrl "https://ldes.mumo.ilabt.imec.be";
-  rdfc:path <./ldes2/>;
-  rdfc:mainModulePath <../>.
 
 <logger> a <Log>;
   rdfc:input <mapped>.
