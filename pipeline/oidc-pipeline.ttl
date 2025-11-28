@@ -1,0 +1,17 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdfl: <https://w3id.org/rdf-lens/ontology#>.
+@prefix rdfc: <https://w3id.org/rdf-connect#>.
+
+<> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
+<> owl:imports <../proc/css.ttl>.
+<> a rdfc:Pipeline;
+  rdfc:consistsOf [
+    rdfc:instantiates rdfc:NodeRunner;
+    rdfc:processor <oidc>;
+  ].
+
+<oidc> a rdfc:Css;
+  rdfc:config <./oidc.json>;
+  rdfc:path <./ldes/>;
+  rdfc:mainModulePath <../>.
+
