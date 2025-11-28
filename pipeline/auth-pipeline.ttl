@@ -23,17 +23,17 @@
     rdfl:envKey "groupHistory";
   ];
   rdfc:port 7111;
-  rdfc:interval 1000;
-  rdfc:publicGroup 1, 2, 5, 7;
-  rdfc:protected "/location", "/by-sensor";
-  rdfc:public "/location/.acl",
-    "/by-sensor/.acl",
-    "/location/root/.acl",
-    "/by-sensor/root/.acl".
+  rdfc:interval 5000;
+  rdfc:publicGroup 1, 5, 7;
+  rdfc:protected "/data/location", "/data/by-sensor";
+  rdfc:public "/data/location/.acl",
+    "/data/by-sensor/.acl",
+    "/data/location/root/.acl",
+    "/data/by-sensor/root/.acl".
 
 <css> a rdfc:Css;
   rdfc:config <./css_config.json>;
-  rdfc:baseUrl "http://solid:3000/";
+  rdfc:baseUrl "http://localhost:8004/";
   rdfc:path <./ldes/>;
   rdfc:mainModulePath <../>.
 

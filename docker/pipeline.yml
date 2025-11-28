@@ -1,5 +1,5 @@
 # Start from a Node container
-FROM node:lts-alpine
+FROM node:25.2
 
 # FROM oven/bun:1 as base
 

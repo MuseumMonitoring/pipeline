@@ -1,7 +1,10 @@
 # Start from a Node container
-FROM node:lts-alpine
+FROM node:lts-bookworm-slim
 
-RUN apk add --no-cache bash
+# Install bash via apt instead of apk
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash && \
+    rm -rf /var/lib/apt/lists/*
 
 ARG FILES
 
