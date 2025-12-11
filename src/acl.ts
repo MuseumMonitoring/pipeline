@@ -55,7 +55,6 @@ type Group = {
   url?: string;
 };
 type Groups = { [id: string]: Group };
-type UsersPerGroup = { [id: string]: User[] };
 
 type Args = {
   users: string;
@@ -184,9 +183,13 @@ export class AclEndpoint extends Processor<Args> {
   async transform(this: Args & this): Promise<void> {
     console.log({ users: this.users, groups: this.groups });
     setInterval(async () => {
-      await this.fetchGroups();
-      await this.fetchUsers();
-      console.log("FETCH SUCCESFUL!");
+      try {
+        await this.fetchGroups();
+        await this.fetchUsers();
+        console.log("FETCH SUCCESFUL!");
+      } catch (ex) {
+        // pass
+      }
     }, this.interval);
   }
 

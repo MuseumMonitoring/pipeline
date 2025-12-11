@@ -7,42 +7,38 @@
 @prefix sh: <http://www.w3.org/ns/shacl#>.
 @prefix owl: <http://www.w3.org/2002/07/owl#>.
 
-rdfc:Css a owl:Class, rdfs:Class;
+rdfc:WebIdBuilder a owl:Class, rdfs:Class;
   rdfc:jsImplementationOf rdfc:Processor;
-  rdfs:label "Community Solid Server";
-  rdfs:comment "Starts the community solid server with a file base";
-  rdfc:file <../lib/css.js>;
-  rdfc:class "Css";
+  rdfs:label "Builds webIds on request";
+  rdfs:comment "Interacts with a css endpoint and returns a WebId and client credential on request";
+  rdfc:file <../lib/webIdBuilder.js>;
+  rdfc:class "WebIdBuilder";
   rdfc:entrypoint <../>.
 
 [ ] a sh:NodeShape;
-  sh:targetClass rdfc:Css;
+  sh:targetClass rdfc:WebIdBuilder;
   sh:property [
     sh:datatype xsd:string;
-    sh:path rdfc:config;
-    sh:name "config";
+    sh:path rdfc:accountRoot;
+    sh:name "accountRoot";
     sh:maxCount 1;
     sh:minCount 1;
   ], [
     sh:datatype xsd:string;
-    sh:path rdfc:baseUrl;
-    sh:name "baseUrl";
+    sh:path rdfc:oidcEndpoint;
+    sh:name "oidcEndpoint";
     sh:maxCount 1;
+    sh:minCount 1;
   ], [
     sh:datatype xsd:integer;
     sh:path rdfc:port;
     sh:name "port";
     sh:maxCount 1;
-  ], [
-    sh:datatype xsd:string;
-    sh:path rdfc:path;
-    sh:name "path";
-    sh:maxCount 1;
     sh:minCount 1;
   ], [
-    sh:datatype xsd:string;
-    sh:path rdfc:mainModulePath;
-    sh:name "mainModulePath";
+    sh:datatype xsd:integer;
+    sh:path rdfc:timeout;
+    sh:name "timeout";
     sh:maxCount 1;
     sh:minCount 1;
   ].

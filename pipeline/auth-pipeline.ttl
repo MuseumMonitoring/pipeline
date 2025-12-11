@@ -5,10 +5,11 @@
 <> owl:imports <../node_modules/@rdfc/js-runner/index.ttl>.
 <> owl:imports <../proc/acl_auth.ttl>.
 <> owl:imports <../proc/css.ttl>.
+<> owl:imports <../proc/webIdBuilder.ttl>.
 <> a rdfc:Pipeline;
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
-    rdfc:processor <css>, <auth>;
+    rdfc:processor <css>, <auth>, <builder>;
   ].
 
 <auth> a rdfc:AclAuth;
@@ -33,7 +34,14 @@
 
 <css> a rdfc:Css;
   rdfc:config <./css_config.json>;
-  rdfc:baseUrl "http://localhost:8004/";
+  rdfc:baseUrl "http://api.local/";
+  rdfc:baseUrl "http://localhost:3000/";
   rdfc:path <./ldes/>;
   rdfc:mainModulePath <../>.
+
+<builder> a rdfc:WebIdBuilder;
+  rdfc:accountRoot "http://api.local/.account/";
+  rdfc:oidcEndpoint "http://api.local/.oidc/token";
+  rdfc:port 3002;
+  rdfc:timeout 5000.
 
