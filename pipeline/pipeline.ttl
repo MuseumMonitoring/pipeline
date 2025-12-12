@@ -121,6 +121,7 @@
     rdfc:dataOutput <sensor/buckets-1>;
     rdfc:metadataOutput <sensor/metadata/2>;
   ];
+  rdfc:savePath <./state/bucketize-sensor-location.json>;
   rdfc:bucketizeStrategy ( <sensorLocationFragmentation> );
   rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-location>.
 
@@ -131,6 +132,7 @@
     rdfc:dataOutput <sensor/buckets-2>;
     rdfc:metadataOutput <sensor/metadata/3>;
   ];
+  rdfc:savePath <./state/bucketize-sensor-id.json>;
   rdfc:bucketizeStrategy ( <sensorFragmentation> );
   rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-id>.
 
@@ -207,6 +209,7 @@ ex:Measurement a sh:NodeShape;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
   rdfc:bucketizeStrategy ( <dataLocationFragmentation> <timeFragmentation> );
+  rdfc:savePath <./state/by-location.json>;
   # rdfc:bucketizeStrategy <dataLocationFragmentation>;
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
@@ -220,7 +223,7 @@ ex:Measurement a sh:NodeShape;
     rdfc:metadataOutput <meta/buckets-2>;
   ];
   rdfc:bucketizeStrategy ( <dataSensorFragmentation> <timeFragmentation> );
-  # rdfc:savePath <./buckets_save_2.json>;
+  rdfc:savePath <./state/by-sensor.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream2>.
 
 <ingestor> a rdfc:LdesDiskWriter;
