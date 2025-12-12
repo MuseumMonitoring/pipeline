@@ -26,22 +26,29 @@
   rdfc:port 7111;
   rdfc:interval 5000;
   rdfc:publicGroup 1, 5, 7;
-  rdfc:protected "/data/location", "/data/by-sensor";
-  rdfc:public "/data/location/.acl",
+  rdfc:protected "/data/", "/sensors/";
+  rdfc:public "/sensors/by-location/.acl",
+    "/sensors/by-location/root/.acl",
+    "/sensors/by-name/.acl",
+    "/sensors/by-name/root/.acl",
+    "/data/by-location/.acl",
+    "/data/by-location/root/.acl",
     "/data/by-sensor/.acl",
-    "/data/location/root/.acl",
     "/data/by-sensor/root/.acl".
 
 <css> a rdfc:Css;
   rdfc:config <./css_config.json>;
-  rdfc:baseUrl "http://api.local/";
-  rdfc:baseUrl "http://localhost:3000/";
+  rdfc:baseUrl _:baseUrl;
   rdfc:path <./ldes/>;
   rdfc:mainModulePath <../>.
 
 <builder> a rdfc:WebIdBuilder;
-  rdfc:accountRoot "http://api.local/.account/";
-  rdfc:oidcEndpoint "http://api.local/.oidc/token";
+  rdfc:baseUrl _:baseUrl;
   rdfc:port 3002;
   rdfc:timeout 5000.
+
+_:baseUrl a rdfl:EnvVariable;
+  a rdfl:EnvVariable;
+  rdfl:envDefault "http://api.local";
+  rdfl:envKey "baseUrl".
 

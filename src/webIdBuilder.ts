@@ -59,8 +59,7 @@ type RequestInput = {
 type Args = {
   port: number;
   timeout: number;
-  accountRoot: string;
-  oidcEndpoint: string;
+  baseUrl: string;
 };
 
 class AccountAttempt {
@@ -242,9 +241,16 @@ export class WebIdBuilder extends Processor<Args> {
   initCb: (c: void) => void = () => {};
   initPromise = new Promise((res) => (this.initCb = res));
 
+  accountRoot: string = "";
+  oidcEndpoint: string = "";
+
   async setupRoot(this: Args & this) {
     console.log("Fetching ", this.accountRoot);
     const controlsRequest = await fetch(this.accountRoot);
+    if (!controlsRequest.ok) {
+      setTimeout(() => this.setupRoot(), this.timeout ?? 5000);
+      return;
+    }
     console.log(controlsRequest);
     this.controls = await controlsRequest.json();
     console.log("controls", this.controls);
@@ -252,6 +258,8 @@ export class WebIdBuilder extends Processor<Args> {
   }
 
   async init(this: Args & this): Promise<void> {
+    this.accountRoot = this.baseUrl + "/.account/";
+    this.oidcEndpoint = this.baseUrl + "/.oidc/token";
     setTimeout(() => this.setupRoot(), this.timeout ?? 5000);
   }
   async transform(this: Args & this): Promise<void> {
