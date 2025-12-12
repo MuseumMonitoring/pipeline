@@ -113,7 +113,13 @@ export class Fetcher extends Processor<FetchArgs> {
                 const { url, at }: { url: string, at: number } = JSON.parse(readFileSync(this.save_path, { encoding: "utf8" }));
                 start = url;
                 this.at = at;
-            } catch (ex: any) { }
+            } catch (ex: any) {
+                if(ex instanceof Error) {
+                    console.log(ex.name, ex.message, ex.cause)
+                    console.log(ex.stack)
+                }
+
+            }
         }
 
         this.current = await Fetched.fetch(start);
