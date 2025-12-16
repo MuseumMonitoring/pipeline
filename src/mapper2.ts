@@ -141,7 +141,7 @@ export class Mapper extends Processor<MapperArgs> {
             .tripleThis(DCTERMS.isVersionOf, platformId(sensor))
             .tripleThis(DCTERMS.modified, literal(sensor.recorded_at.toISOString(), XSD.terms.dateTime))
             .tripleThis(DCTERMS.identifier, literal(sensor.device_EUI))
-            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
+            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.device_ID));
 
         if (sensor.group_ID) {
             builder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
