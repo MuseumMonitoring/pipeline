@@ -37,9 +37,13 @@ export const isotc = createTermNamespace(
 );
 
 export const cidoc = createTermNamespace("http://www.cidoc-crm.org/cidoc-crm/", "P55_has_current_location");
-export const DCTERMS = createTermNamespace("http://purl.org/dc/terms/", "modified", "isVersionOf");
+export const DCTERMS = createTermNamespace("http://purl.org/dc/terms/", "modified", "isVersionOf", "identifier");
 
 export const oslo = createTermNamespace(
     "https://data.vlaanderen.be/ns/observaties-en-metingen#",
 );
 
+export const skos = createTermNamespace(
+    "http://www.w3.org/2004/02/skos/core#",
+    "prefLabel",
+);
