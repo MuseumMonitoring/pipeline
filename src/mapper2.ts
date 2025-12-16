@@ -1,12 +1,12 @@
 import { Processor, Reader, Writer } from "@rdfc/js-runner";
 import { Entry } from "./fetch";
 import { Quad, Quad_Object, Term } from "@rdfjs/types";
-import { cidoc, DCTERMS, isotc, mumoData, qudt, sosa } from "./ontologies";
-import { DataFactory, Quad_Subject } from "n3";
+import { cidoc, DCTERMS, isotc, mumoData, qudt, sosa, skos } from "./ontologies";
+import { DataFactory } from "n3";
 import * as N3 from "n3";
 import { DC, RDF, RDFS, XSD } from "@treecg/types";
 import { Builder } from "./builder";
-const { quad, literal, blankNode } = DataFactory;
+const { literal } = DataFactory;
 
 type Brand = {
     name: string,
@@ -140,10 +140,14 @@ export class Mapper extends Processor<MapperArgs> {
             .tripleThis(RDF.terms.type, sosa.Platform)
             .tripleThis(DCTERMS.isVersionOf, platformId(sensor))
             .tripleThis(DCTERMS.modified, literal(sensor.recorded_at.toISOString(), XSD.terms.dateTime))
+            .tripleThis(DCTERMS.identifier, literal(sensor.device_EUI))
             .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
 
         if (sensor.group_ID) {
             builder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
+        }
+        if(sensor.name) {
+            builder.triple(skos.prefLabel, literal(sensor.name));
         }
         const foundBrands = (sensor.brands || []).flatMap(b => brandNames[b] || []);
         for (const brand of foundBrands) {
