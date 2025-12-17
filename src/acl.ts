@@ -55,10 +55,16 @@ type Group = {
   url?: string;
 };
 type Groups = { [id: string]: Group };
+type Sensor = {
+  id: number;
+  group_ID?: string;
+  recorded_at: string;
+};
 
 type Args = {
   users: string;
   groups: string;
+  sensors: string;
   port: number;
   interval: number;
   publicGroups: number[];
@@ -66,10 +72,38 @@ type Args = {
   public: string[];
 };
 
-const regex = /sensor-(\d+)/;
+const sensorRegex = /sensor-(\d+)/;
+const groupRegex = /group-(\d+)/;
 export class AclEndpoint extends Processor<Args> {
   foundGroups: Groups = {};
+  sensorGroups: { [id: string]: { date: Date; id: string } } = {};
   foundUsers: User[] = [];
+
+  private getGroupId(
+    this: Args & this,
+    identifier: string,
+  ): number | undefined {
+    const groupMatch = identifier.match(groupRegex);
+    if (groupMatch) {
+      let groupId: number | undefined = parseInt(groupMatch[1]!); // "2"
+      console.log("Found group id", groupId);
+      if (groupId) return groupId;
+    }
+
+    const sensorMatch = identifier.match(sensorRegex);
+    if (sensorMatch) {
+      let sensorId: string = sensorMatch[1] || ""; // "2"
+      console.log(
+        "Found sensor id",
+        sensorId,
+        "with group",
+        this.sensorGroups[sensorId]?.id,
+      );
+      const groupId = this.sensorGroups[sensorId]?.id;
+      if (groupId) return parseInt(groupId);
+    }
+    return;
+  }
 
   private async fetchGroups(this: Args & this) {
     const resp = await fetch(this.groups);
@@ -79,6 +113,29 @@ export class AclEndpoint extends Processor<Args> {
     for (const g of groups.history) {
       this.foundGroups[g.id + ""] = g;
     }
+  }
+
+  private async fetchSensors(this: Args & this) {
+    console.log("HELLOA");
+    const resp = await fetch(this.sensors);
+    const groups = <Data<Sensor>>await resp.json();
+
+    for (const g of groups.history) {
+      const date = new Date(g.recorded_at);
+      if (
+        this.sensorGroups[g.id] == undefined ||
+        this.sensorGroups[g.id]!.date < date
+      ) {
+        delete this.sensorGroups[g.id];
+        if (g.group_ID) {
+          this.sensorGroups[g.id] = {
+            date,
+            id: g.group_ID,
+          };
+        }
+      }
+    }
+    console.log(JSON.stringify(this.sensorGroups));
   }
 
   private async fetchUsers(this: Args & this) {
@@ -99,6 +156,7 @@ export class AclEndpoint extends Processor<Args> {
     this.port = this.port ?? 7111;
     this.users = this.users ?? "http://localhost:8080/history.php?users";
     this.groups = this.groups ?? "http://localhost:8080/history.php?groups";
+    this.sensors = this.sensors ?? "http://localhost:8080/history.php?sensors";
 
     http
       .createServer(async (request, response) => {
@@ -136,11 +194,8 @@ export class AclEndpoint extends Processor<Args> {
             await new Promise((res) => response.write(publicString(), res));
           }
 
-          const match = identifier.match(regex);
-
-          if (match) {
-            let groupId: number | undefined = parseInt(match[1]!); // "2"
-
+          let groupId = this.getGroupId(identifier);
+          if (groupId !== undefined) {
             if (this.publicGroups.includes(groupId)) {
               console.log("Public group", url.pathname);
               await new Promise((res) => response.write(publicString(), res));
@@ -186,6 +241,7 @@ export class AclEndpoint extends Processor<Args> {
       try {
         await this.fetchGroups();
         await this.fetchUsers();
+        await this.fetchSensors();
         console.log("FETCH SUCCESFUL!");
       } catch (ex) {
         // pass

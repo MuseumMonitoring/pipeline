@@ -23,6 +23,11 @@
     rdfl:envDefault "http://localhost:8080/history.php?groups";
     rdfl:envKey "groupHistory";
   ];
+  rdfc:sensorsUrl [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "http://localhost:8080/history.php?sensors";
+    rdfl:envKey "sensorHistory";
+  ];
   rdfc:port 7111;
   rdfc:interval 5000;
   rdfc:publicGroup 1, 5, 7;
@@ -45,10 +50,10 @@
 <builder> a rdfc:WebIdBuilder;
   rdfc:baseUrl _:baseUrl;
   rdfc:port 3002;
-  rdfc:timeout 5000.
+  rdfc:timeout 7000.
 
 _:baseUrl a rdfl:EnvVariable;
   a rdfl:EnvVariable;
-  rdfl:envDefault "http://api.local";
+  rdfl:envDefault "http://localhost:3000/";
   rdfl:envKey "baseUrl".
 
