@@ -235,6 +235,15 @@ class AccountAttempt {
   }
 }
 
+function assureTrailingSlash(url: string): string {
+  if (url.endsWith("/")) {
+    return url;
+  } else {
+    console.warn("Url should end with trailing slash", url);
+    return url + "/";
+  }
+}
+
 export class WebIdBuilder extends Processor<Args> {
   controls: Controls = {} as Controls;
 
@@ -258,8 +267,9 @@ export class WebIdBuilder extends Processor<Args> {
   }
 
   async init(this: Args & this): Promise<void> {
-    this.accountRoot = this.baseUrl + "/.account/";
-    this.oidcEndpoint = this.baseUrl + "/.oidc/token";
+    const url = assureTrailingSlash(this.baseUrl);
+    this.accountRoot = url + ".account/";
+    this.oidcEndpoint = url + ".oidc/token";
     setTimeout(() => this.setupRoot(), this.timeout ?? 5000);
   }
   async transform(this: Args & this): Promise<void> {
