@@ -69,5 +69,11 @@ rdfc:MumoMapper a owl:Class, rdfs:Class;
     sh:name "sensor";
     sh:maxCount 1;
     sh:minCount 1;
+  ], [
+    sh:datatype xsd:string;
+    sh:path rdfc:groups;
+    sh:name "groups";
+    sh:maxCount 1;
+    sh:minCount 1;
   ].
 

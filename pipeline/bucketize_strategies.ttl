@@ -15,7 +15,7 @@
 
 <dataLocationFragmentation> a tree:SubjectFragmentation;
   tree:fragmentationPath (
-    sosa:madeySensor
+    sosa:madeBySensor
     sosa:isHostedBy
     cidoc:P55_has_current_location
   );
