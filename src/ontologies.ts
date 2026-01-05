@@ -36,7 +36,7 @@ export const isotc = createTermNamespace(
     "OM_Observation",
 );
 
-export const cidoc = createTermNamespace("http://www.cidoc-crm.org/cidoc-crm/", "P55_has_current_location");
+export const cidoc = createTermNamespace("http://www.cidoc-crm.org/cidoc-crm/", "P55_has_current_location", "groupName");
 export const DCTERMS = createTermNamespace("http://purl.org/dc/terms/", "modified", "isVersionOf", "identifier");
 
 export const oslo = createTermNamespace(

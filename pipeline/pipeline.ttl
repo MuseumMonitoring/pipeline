@@ -21,7 +21,6 @@
   rdfc:consistsOf [
     rdfc:instantiates rdfc:NodeRunner;
     rdfc:processor <by-location>,
-      <by-sensor>,
       <fetchData>,
       <fetchSensors>,
       <mapper>,
@@ -29,13 +28,8 @@
       <ingestor>,
       <metaReader>,
       <metaReaderSensor>,
-      <data-combine>,
-      <sds-dup>,
       <sdsify-sensor>,
-      <sensor-fan>,
-      <sensor-converge>,
       <bucketize-sensor-location>,
-      <bucketize-sensor-id>,
       <ingest-sensors>;
   ].
 
@@ -47,8 +41,6 @@
 <data> a rdfc:Reader, rdfc:Writer.
 <trigger> a rdfc:Reader, rdfc:Writer.
 <sds-raw> a rdfc:Reader, rdfc:Writer.
-<sds-raw-1> a rdfc:Reader, rdfc:Writer.
-<sds-raw-2> a rdfc:Reader, rdfc:Writer.
 #
 <fetchData> a rdfc:MumoFetch;
   rdfc:dataOutput <data>;
@@ -81,6 +73,11 @@
   rdfc:sensor [
     rdfc:reader <sensors/json>;
     rdfc:writer <sensors/ttl>;
+  ];
+  rdfc:groups [
+    a rdfl:EnvVariable;
+    rdfl:envDefault "https://www.mumodashboard.be/history.php?groups";
+    rdfl:envKey "groupHistory";
   ].
 
 <sdsify-sensor> a rdfc:Sdsify;
@@ -106,46 +103,24 @@
   ].
 """.
 
-<sensor-fan> a rdfc:FanOut;
-  rdfc:reader <sensors/sds>;
-  rdfc:writer <sensors/sds-1>, <sensors/sds-2>.
-
-<sensor-converge> a rdfc:Converge;
-  rdfc:reader <sensor/buckets-1>, <sensor/buckets-2>;
-  rdfc:writer <sensor/buckets>.
-
 <bucketize-sensor-location> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sensors/sds-1>;
+    rdfc:dataInput <sensors/sds>;
     rdfc:metadataInput <sensor/metadata>;
-    rdfc:dataOutput <sensor/buckets-1>;
+    rdfc:dataOutput <sensor/buckets>;
     rdfc:metadataOutput <sensor/metadata/2>;
   ];
   rdfc:savePath <./state/bucketize-sensor-location.json>;
   rdfc:bucketizeStrategy ( <sensorLocationFragmentation> );
   rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-location>.
 
-<bucketize-sensor-id> a rdfc:Bucketize;
-  rdfc:channels [
-    rdfc:dataInput <sensors/sds-2>;
-    rdfc:metadataInput <sensor/metadata/2>;
-    rdfc:dataOutput <sensor/buckets-2>;
-    rdfc:metadataOutput <sensor/metadata/3>;
-  ];
-  rdfc:savePath <./state/bucketize-sensor-id.json>;
-  rdfc:bucketizeStrategy ( <sensorFragmentation> );
-  rdfc:outputStreamId <http://data.mumo.be/streams/sensors/by-id>.
-
 <ingest-sensors> a rdfc:LdesDiskWriter;
   rdfc:dataInput <sensor/buckets>;
-  rdfc:metadataInput <sensor/metadata/3>;
+  rdfc:metadataInput <sensor/metadata/2>;
   rdfc:directory <./ldes/sensors/>;
   rdfc:streamName [
     rdfc:stream <http://data.mumo.be/streams/sensors/by-location>;
     rdfc:name "by-location";
-  ], [
-    rdfc:stream <http://data.mumo.be/streams/sensors/by-id>;
-    rdfc:name "by-name";
   ].
 
 <sdsify-data> a rdfc:Sdsify;
@@ -179,10 +154,6 @@ ex:Measurement a sh:NodeShape;
   ].
 """.
 
-<sds-dup> a rdfc:FanOut;
-  rdfc:reader <sds-raw>;
-  rdfc:writer <sds-raw-1>, <sds-raw-2>.
-
 <metadata> a rdfc:Reader, rdfc:Writer.
 <raw/buckets-1> a rdfc:Reader, rdfc:Writer.
 <meta/buckets-1> a rdfc:Reader, rdfc:Writer.
@@ -197,45 +168,30 @@ ex:Measurement a sh:NodeShape;
   rdfc:output <sensor/metadata>;
   rdfc:closeOnEnd "true".
 
-<data-combine> a rdfc:Converge;
-  rdfc:reader <raw/buckets-1-1>, <raw/buckets-1-2>;
-  rdfc:writer <raw/buckets-1>.
-
 <by-location> a rdfc:Bucketize;
   rdfc:channels [
-    rdfc:dataInput <sds-raw-1>;
+    rdfc:dataInput <sds-raw>;
     rdfc:metadataInput <metadata>;
-    rdfc:dataOutput <raw/buckets-1-1>;
+    rdfc:dataOutput <raw/buckets-1>;
     rdfc:metadataOutput <meta/buckets-1>;
   ];
-  rdfc:bucketizeStrategy ( <dataLocationFragmentation> <timeFragmentation> );
+  rdfc:bucketizeStrategy (
+    <dataLocationFragmentation>
+    <dataSensorFragmentation>
+    <timeFragmentation>
+  );
   rdfc:savePath <./state/by-location.json>;
   # rdfc:bucketizeStrategy <dataLocationFragmentation>;
   # rdfc:savePath <./buckets_save_1.json>;
   rdfc:outputStreamId <https://w3id.org/sds#Stream>.
 
-# The root fragment is located at '/root/' this defaults to ''
-<by-sensor> a rdfc:Bucketize;
-  rdfc:channels [
-    rdfc:dataInput <sds-raw-2>;
-    rdfc:metadataInput <meta/buckets-1>;
-    rdfc:dataOutput <raw/buckets-1-2>;
-    rdfc:metadataOutput <meta/buckets-2>;
-  ];
-  rdfc:bucketizeStrategy ( <dataSensorFragmentation> <timeFragmentation> );
-  rdfc:savePath <./state/by-sensor.json>;
-  rdfc:outputStreamId <https://w3id.org/sds#Stream2>.
-
 <ingestor> a rdfc:LdesDiskWriter;
   rdfc:dataInput <raw/buckets-1>;
-  rdfc:metadataInput <meta/buckets-2>;
+  rdfc:metadataInput <meta/buckets-1>;
   rdfc:directory <./ldes/data>;
   rdfc:streamName [
     rdfc:stream <https://w3id.org/sds#Stream>;
     rdfc:name "by-location";
-  ], [
-    rdfc:stream <https://w3id.org/sds#Stream2>;
-    rdfc:name "by-sensor";
   ].
 
 <logger> a <Log>;

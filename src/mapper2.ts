@@ -17,17 +17,17 @@ const brands: { [id: string]: Brand[] } = {};
 const brandNames: { [id: string]: Brand[] } = {};
 
 (<[string, string[]][]>[
-    ["internal", ["volatage", "percentcharged"]],
-    ["bme680", ["temperature", "humidity", "pressure"]],
+    ["internal", ["voltage", "percentcharged"]],
+    ["bme680", ["temperature", "relative_humidity", "air_pressure"]],
     ["tsl2591", ["lux"]],
-    ["sht40", ["temperature", "humidity"]],
+    ["sht40", ["temperature", "relative_humidity"]],
     ["lis3dh", []],
     ["sths34", []],
-    ["scd40", ["temperature", "humidity", "CO2"]],
+    ["scd40", ["temperature", "relative_humidity", "co2"]],
     ["sps30", []],
     ["xs1110", ["latitude", "longitude"]],
     // DeviceIndex 999
-    ["base", ["battery", "temperature", "humidity", "lux", "pressure", "voc", "dust"]],
+    ["base", ["battery", "temperature", "relative_humidity", "lux", "air_pressure", "voc", "particle_concentration"]],
 ]).forEach(([name, kinds], i, brandsArr) => {
     if (i === brandsArr.length - 1) {
         i = 999;
@@ -55,6 +55,12 @@ function brandObserves(brand: Brand): Term {
     return mumoData.custom(`kind/${brand.kind}`)
 }
 
+
+type Group = {
+    id: number,
+    group_name: string,
+    parent?: number,
+}
 
 type Sensor = {
     id: number,
@@ -102,19 +108,24 @@ type MapperArgs = {
         reader: Reader,
         writer: Writer,
     },
+    groups: string,
 }
 
 export class Mapper extends Processor<MapperArgs> {
     sensorData: { [eui: string]: History } = {}
-
+    groupNames: {[id: string]: string} = {}
+    sensorsPerId: {[sensorId: string]: Sensor} = {};
     sensorsAreSetup: Promise<void> = new Promise(() => { });;
 
+    sensorWriter: Writer = {} as Writer;
+
     async init(this: MapperArgs & this): Promise<void> {
+        this.sensorWriter = this.sensor.writer
     }
 
     async transform(this: MapperArgs & this): Promise<void> {
-
-        this.sensorsAreSetup = this.setupSensor(this.sensor.reader, this.sensor.writer);
+        await this.setupGroupNames(this.groups);
+        this.sensorsAreSetup = this.setupSensor(this.sensor.reader);
 
         // This should go when backpressure is implemented
         await this.sensorsAreSetup;
@@ -132,6 +143,43 @@ export class Mapper extends Processor<MapperArgs> {
         // Nothing to produce
     }
 
+    async setupGroupNames(url: string) {
+        try {
+            const resp = await fetch(url);
+            const data = await resp.json();
+            const groups: Group[] = data.history;
+
+            for(const group of groups) {
+                let groupName = group.group_name;
+                let parent = groups.find(g => g.id == group.parent);
+                while(parent !== undefined) {
+                    groupName = parent.group_name + " / " + groupName;
+                    parent = groups.find(g => g.id == parent!.parent)
+                }
+
+                if(this.groupNames[group.id] !== groupName) {
+                    this.groupNames[group.id] = groupName;
+
+                    // find all dependant sensors
+                    for(const sensor of Object.values(this.sensorsPerId)) {
+                        if(sensor.group_ID + "" === group.id + "") {
+                            await this.writeSensor(sensor);
+                        }
+                    }
+                }
+            }
+        } catch(ex) {
+            if(ex instanceof Error) {
+                console.error(ex.name, ex.message, ex.cause);
+                console.error(ex.stack);
+            } else {
+                console.error(ex)
+            }
+        }
+
+        setTimeout(() => this.setupGroupNames(url), 5000);
+    }
+
     sensorQuads(sensor: Sensor): Quad[] | undefined {
         const quads: Quad[] = [];
 
@@ -145,7 +193,13 @@ export class Mapper extends Processor<MapperArgs> {
 
         if (sensor.group_ID) {
             builder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
+            if(this.groupNames[sensor.group_ID]) {
+                builder.triple(cidoc.groupName, literal(this.groupNames[sensor.group_ID]!));
+            } else {
+                console.error("Expected to find a name for group " + sensor.group_ID + " but found none")
+            }
         }
+
         if(sensor.name) {
             builder.triple(skos.prefLabel, literal(sensor.name));
         }
@@ -190,7 +244,7 @@ export class Mapper extends Processor<MapperArgs> {
 
         const platformBuilder = measurement.triple(sosa.madeBySensor, <Quad_Object>brandId(sensor, brand))
             .triple(sosa.isHostedBy, platformId(sensor))
-            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.id));
+            .tripleThis(RDFS.terms.label, literal("sensor-" + sensor.device_ID));
 
         if (sensor.group_ID) {
             platformBuilder.triple(cidoc.P55_has_current_location, literal("group-" + sensor.group_ID));
@@ -201,7 +255,7 @@ export class Mapper extends Processor<MapperArgs> {
         return quads;
     }
 
-    setupSensor(this: MapperArgs & this, sensors: Reader, writer: Writer): Promise<void> {
+    setupSensor(this: MapperArgs & this, sensors: Reader): Promise<void> {
         return new Promise(async res => {
             for await (const st of sensors.strings()) {
                 const entity = <Entry<Sensor>>JSON.parse(st);
@@ -221,17 +275,22 @@ export class Mapper extends Processor<MapperArgs> {
                         });
 
                         sensor.brands = ["internal", "bme680"];
-                        const quads = this.sensorQuads(sensor);
-                        if (quads !== undefined) {
-                            await writer.string(
-                                new N3.Writer().quadsToString(quads)
-                            );
-                        }
+                        this.sensorsPerId[sensor.id] = sensor;
 
+                        await this.writeSensor(sensor);
                         break;
                 }
             }
         })
+    }
+
+    async writeSensor(sensor: Sensor) {
+        const quads = this.sensorQuads(sensor);
+        if (quads !== undefined) {
+            await this.sensorWriter.string(
+                new N3.Writer().quadsToString(quads)
+            );
+        }
     }
 
     async setupData(this: MapperArgs & this, data: Reader): Promise<void> {
