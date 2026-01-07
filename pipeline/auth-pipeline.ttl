@@ -30,7 +30,6 @@
   ];
   rdfc:port 7111;
   rdfc:interval 5000;
-  rdfc:publicGroup 1, 5, 7;
   rdfc:protected "/data/", "/sensors/";
   rdfc:public "/sensors/by-location/.acl",
     "/sensors/by-location/root/.acl",

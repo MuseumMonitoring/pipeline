@@ -18,7 +18,6 @@
 :dataset a dcat:Dataset;
   dcat:title "MuMo Sensors";
   dcat:publisher [ foaf:name "Arthur Vercruysse" ];
-  ldes:timestampPath <http://def.isotc211.org/iso19156/2011/Observation#OM_Observation.resultTime>;
   dcat:identifier <http://localhost:3000/ldes>.
 
 # extra information about the LDES itselve
